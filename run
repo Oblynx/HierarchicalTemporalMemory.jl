@@ -4,8 +4,12 @@ project_root=`pwd`
 #project_root="${1:-$project_root}"
 
 docker build -t "htm.jl" .
+# --net=host includes unix sockets!!!
 docker run --rm -it --name "htm.jl" \
            -v "$project_root/src":"/htm.jl/src" \
-           -e DISPLAY=$DISPLAY \
-           -v /tmp/.X11-unix:/tmp/.X11-unix \
+           --device=/dev/dri/renderD128 \
+           -e DISPLAY \
+           --net=host \
            htm.jl ${1:+"$1"}
+
+           #-v /tmp/.X11-unix:/tmp/.X11-unix \
