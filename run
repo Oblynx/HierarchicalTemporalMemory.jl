@@ -1,0 +1,11 @@
+# To be run from project root
+
+project_root=`pwd`
+#project_root="${1:-$project_root}"
+
+docker build -t "htm.jl" .
+docker run --rm -it --name "htm.jl" \
+           -v "$project_root/src":"/htm.jl/src" \
+           -e DISPLAY=$DISPLAY \
+           -v /tmp/.X11-unix:/tmp/.X11-unix \
+           htm.jl ${1:+"$1"}
