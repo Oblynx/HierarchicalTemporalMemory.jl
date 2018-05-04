@@ -6,7 +6,7 @@ project_root=`pwd`
 docker build -t "htm.jl" .
 # --net=host includes unix sockets!!!
 docker run --rm -it --name "htm.jl" \
-           -v "$project_root/src":"/htm.jl/src" \
+           -v "$project_root/":"/htm.jl/" \
            --device=/dev/dri/renderD128 \
            --ipc host \
            -e DISPLAY \
