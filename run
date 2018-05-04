@@ -8,6 +8,7 @@ docker build -t "htm.jl" .
 docker run --rm -it --name "htm.jl" \
            -v "$project_root/src":"/htm.jl/src" \
            --device=/dev/dri/renderD128 \
+           --ipc host \
            -e DISPLAY \
            --net=host \
            htm.jl ${1:+"$1"}
