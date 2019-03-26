@@ -1,4 +1,7 @@
 using SparseArrays
+using StaticArrays
+using Setfield
+
 # Type aliases
 const IntSP= Int32
 const UIntSP= UInt32

@@ -45,39 +45,27 @@ const hypercubeIterateRet{N,T}= Tuple{ SVector{N,T}, Maybe{overflowingVector{N,T
 function Base.iterate(hc::AbstractHypercube{N,T},
                       x::overflowingVector{N,T}= start(hc)
                      ) where {N,T}
-  x.x == x.lims ? nothing : (x.x, inc(x))
+  x.x == x.lims ? nothing : (x.x, next(x))
 end
-# Increase dim i, overflow to i+1
-#Base.next(::AbstractHypercube{N,T},x::overflowingVector{N,T}) where {N,T}= (x.x, inc!(x))
-#Base.done(::AbstractHypercube{N,T},x::overflowingVector{N,T}) where {N,T}= x.x == x.lims
 
-Base.eltype(::Type{AbstractHypercube{N,T}}) where {N,T}= overflowingVector{N,T}
+Base.eltype(::Type{AbstractHypercube{N,T}}) where {N,T}= SVector{N,T}
 Base.length(hc::AbstractHypercube)= (2*hc.radius+1).^length(hc.dims)
 
 
 ### Utility ###
 
-#function inc!(x::overflowingVector)
-#  i= 1
-#  x.x[i] += 1
-#  while x.x[i] > x.lims[i]
-#    #print(x.x[i])
-#    x.x[i]= x.start[i]
-#    i += 1
-#    x.x[i] += 1
-#  end
-#  return x
-#end
+#next(x::overflowingVector, i=1)=
+#    x.x[i] < x.lims[i] ?
+#      (@set x.x= setindex(x.x,x.x[i]+1,i)) :
+#      next((@set x.x= setindex(x.x,x.start[i],i)), i+1)
 
-function inc(x::overflowingVector)
-  i= 1
-  xn= setindex(x.x, x.x[i]+1,i);
-  while xn[i] > x.lims[i]
-    xn= setindex(xn, x.start[i],i)
+function next(x::overflowingVector)
+  i= 1;
+  while x.x[i] >= x.lims[i]
+    x= @set x.x= setindex(x.x, x.start[i],i)
     i+= 1
-    xn= setindex(xn, xn[i]+1,i)
   end
-  return overflowingVector(x,xn)
+  return @set x.x= setindex(x.x, x.x[i]+1, i)
 end
 
 
