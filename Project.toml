@@ -1,0 +1,9 @@
+name = "HTM"
+uuid = "78246fe4-4c77-12e9-07b1-1b7cfb9ec1a1"
+authors = ["Konstantinos Samaras-Tsakiris <ksamtsak@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

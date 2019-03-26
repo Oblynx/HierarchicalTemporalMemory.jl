@@ -1,5 +1,6 @@
 module HTM
 
-import SpatialPooler
+include("SpatialPooler.jl")
+using .SpatialPoolerM
 
 end # module
