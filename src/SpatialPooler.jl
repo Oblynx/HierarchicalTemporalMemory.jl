@@ -1,6 +1,8 @@
-module SpatialPooler
+module SpatialPoolerM
 
-using Common
+include("common.jl")
+using StaticArrays
+include("topology.jl")
 
 # NOTE: Instead of making type aliases, perhaps parametrize IntSP etc?
 struct SPParams
@@ -31,7 +33,7 @@ function SPParams(inputSize=(32,32), spSize=(64,64);
   if input_potential_range == 0
     input_potential_range= max(inputSize)
   end
-  
+
   ## Construction
   SPParams(inputSize,spSize,input_potential_range,sparsity,
            θ_potential_prob_prox,θ_permanence_prox,θ_stimulus_act,
@@ -53,12 +55,12 @@ struct SpatialPooler #<: Region
         - If < 1-θ_potential_prob_prox
          - Init perm: rescale Z from [0..1-θ] -> [0..1]: Z/(1-θ)
     """
-    
+
     # Map column coordinates to their center in the input space. Column coords FROM 0 !!!
     xᶜ(col_y, colDim,inDim)= round(col_y.*inDim./colDim)
-    input_hypercube(xᶜ,length, inDim,wraparound)= wraparound ? 
-                                                    wrapping_hypercube(xᶜ,length, inDim):
-                                                    hypercube(xᶜ,length, inDim);
+    input_hypercube(xᶜ,length, inDim,wraparound)=
+        wraparound ? wrapping_hypercube(xᶜ,length, inDim) :
+                     hypercube(xᶜ,length, inDim);
 
 
   end
@@ -72,7 +74,7 @@ end
 
   ...
   # Input
-    - `z`: array of active input cells, arranged in a metric space. 
+    - `z`: array of active input cells, arranged in a metric space.
     - `params`: structure of miscellaneous SP hyperparameters
       - `input_potential_range`
       - `sparsity`
@@ -125,7 +127,7 @@ end
 
   Local inhibition makes sense only if the input space has topology, and can be turned off
   (param: `enable_local_inhibit`).
-  
+
   ## SP activation
 
   The final activation of each minicolumn is a result of its (boosted) "overlap" `o` with the
@@ -136,7 +138,7 @@ end
   ## Learning
 
   (param: `enable_learning`)
-  
+
 """
 #function step!(z::CellActivity,proximalSynapses::Synapses; params::SPParams)
 function step!(z::CellActivity, sp::SpatialPooler)
