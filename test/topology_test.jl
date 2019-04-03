@@ -6,9 +6,9 @@ include("../src/common.jl")
 include("../src/topology.jl")
 
 # Test iteration over a hypercube
-startP= (5,8)
-radius= 3
-hc1= hypercube(startP,radius,(20,20));
+startP= (50,80)
+radius= 30
+hc1= hypercube(startP,radius,(200,200));
 a= [convert(NTuple{2,Int},i) for i in hc1]
 reference= [i for i in zip(
     repeat(startP[1]-radius : startP[1]+radius,outer=2*radius+1),

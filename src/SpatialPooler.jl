@@ -5,10 +5,10 @@ using StaticArrays
 include("topology.jl")
 
 # NOTE: Instead of making type aliases, perhaps parametrize IntSP etc?
-struct SPParams
-  inputSize::Tuple{Vararg{UIntSP}}
-  spSize::Tuple{Vararg{UIntSP}}
-  input_potential_range::UIntSP
+struct SPParams{Nin,Nsp}
+  inputSize::NTuple{Nin,UIntSP}
+  spSize::NTuple{Nsp,UIntSP}
+  input_potentialRadius::UIntSP
   sparsity::FloatSP
   θ_potential_prob_prox::FloatSP
   θ_permanence_prox::FloatSP
@@ -16,34 +16,38 @@ struct SPParams
   n_active_perinhibit::UIntSP
   enable_local_inhibit::Bool
   enable_learning::Bool
+  topologyWraps::Bool
 end
 
+# SPParams convenience constructor and default arguments.
+#   Obligatory validity checks should be an inner constructor
 function SPParams(inputSize=(32,32), spSize=(64,64);
-                  input_potential_range=16,
+                  input_potentialRadius=16,
                   sparsity=0.2,
                   θ_potential_prob_prox=0.5,
                   θ_permanence_prox=0.4,
                   θ_stimulus_act=0,
                   n_active_perinhibit=10,
                   enable_local_inhibit=true,
-                  enable_learning=true
+                  enable_learning=true,
+                  topologyWraps=false
                  )
   ## Param transformation
   # cover the entire input space, reasonable if no topology
-  if input_potential_range == 0
-    input_potential_range= max(inputSize)
+  if input_potentialRadius == 0
+    input_potentialRadius= max(inputSize)
   end
 
   ## Construction
-  SPParams(inputSize,spSize,input_potential_range,sparsity,
+  SPParams(inputSize,spSize,input_potentialRadius,sparsity,
            θ_potential_prob_prox,θ_permanence_prox,θ_stimulus_act,
            n_active_perinhibit,
-           enable_local_inhibit,enable_learning)
+           enable_local_inhibit,enable_learning,topologyWraps)
 end
 
 struct SpatialPooler #<: Region
   params::SPParams
-  proximalSynapses::Synapses
+  proximalSynapses::AbstractSynapses
 
   # Construct and initialize
   function SpatialPooler(params)
@@ -58,12 +62,17 @@ struct SpatialPooler #<: Region
 
     # Map column coordinates to their center in the input space. Column coords FROM 0 !!!
     xᶜ(col_y, colDim,inDim)= round(col_y.*inDim./colDim)
-    input_hypercube(xᶜ,length, inDim,wraparound)=
-        wraparound ? wrapping_hypercube(xᶜ,length, inDim) :
-                     hypercube(xᶜ,length, inDim);
+    input_hypercube(xᶜ,radius,inDim,topologyWraps)=
+        topologyWraps ? wrapping_hypercube(xᶜ,radius, inDim) :
+                        hypercube(xᶜ,radius, inDim);
 
-
+    proximalSynapses= initProximalSynapses()
   end
+end
+
+function initProximalSynapses(inputSize,spSize,xᶜ,input_hypercube)
+  # Make an input x spcols permanence sparse matrix
+  # sparse(inIdx, colIdx, perm)
 end
 
 
@@ -76,7 +85,7 @@ end
   # Input
     - `z`: array of active input cells, arranged in a metric space.
     - `params`: structure of miscellaneous SP hyperparameters
-      - `input_potential_range`
+      - `input_potentialRadius`
       - `sparsity`
       - `θ_potential_prob_prox`
       - `θ_permanence_prox`
@@ -105,7 +114,7 @@ end
 
   There is an implied spatial mapping between the input and output spaces. Minicolumn `i` has
   potential synapses only with some input cells close to input `i` ("close": hypercube around
-  cell `i`) (param: `input_potential_range`).
+  cell `i`) (param: `input_potentialRadius`).
   For every input in that area, there is a uniformly-distributed probability that
   it connects to the minicolumn (param: `θ_potential_prob_prox`).
   Permanence values for potential synapses are also uniformly iid, with connection threshold
