@@ -24,20 +24,22 @@ synapses= DenseSynapses(inputDims, spDims, rand);
 #end
 
 # Test SparseSynapses
+# TODO compare results with ground truth
 seed!(0)
-inputDims= (400,500);
-spDims= (200,30);
-synapses= SparseSynapses(inputDims, spDims, (T,m,n)-> sprand(T,m,n,5e-4));
+inputDims= (100,50);
+spDims= (200,100);
+synapses= SparseSynapses(inputDims, spDims, (T,m,n)-> sprand(T,m,n,2e-4));
 display(nnz(synapses))
 
 @views begin
   display(synapses[2,2,1,3])
   display(synapses[1:3,3:end,1,end])
-  display(synapses[3,4,:,:])
-  #synapses[3,4,:,2:3].= [1 2; 3 4];
-  #synapses[3,4,:,:] == [-105 1 2; 81 3 4]
+  display(synapses[3:4,3:8,5,:])
+  display(synapses[3:4,3:6,5,1:2])
+  synapses[3:4,3:6,5,1:2]= sprand(Int8, 8,2,1.)
+  display(synapses[3:4,3:6,5,1:2])
 end
 
-display(HTMTest.synapses[3,3:8,5,:])
+display(synapses[3,3:8,5,:])
 
 end #module
