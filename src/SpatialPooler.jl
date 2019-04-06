@@ -21,7 +21,8 @@ end
 
 # SPParams convenience constructor and default arguments.
 #   Obligatory validity checks should be an inner constructor
-function SPParams(inputSize=(32,32), spSize=(64,64);
+function SPParams(inputSize::NTuple{Nin,UIntSP}= UIntSP.((32,32)),
+                  spSize::NTuple{Nsp,UIntSP}= UIntSP.((64,64));
                   input_potentialRadius=16,
                   sparsity=0.2,
                   θ_potential_prob_prox=0.5,
@@ -31,15 +32,15 @@ function SPParams(inputSize=(32,32), spSize=(64,64);
                   enable_local_inhibit=true,
                   enable_learning=true,
                   topologyWraps=false
-                 )
-  ## Param transformation
+                 ) where {Nin,Nsp}
+  # Param transformation
   # cover the entire input space, reasonable if no topology
   if input_potentialRadius == 0
     input_potentialRadius= max(inputSize)
   end
 
   ## Construction
-  SPParams(inputSize,spSize,input_potentialRadius,sparsity,
+  SPParams{Nin,Nsp}(inputSize,spSize,input_potentialRadius,sparsity,
            θ_potential_prob_prox,θ_permanence_prox,θ_stimulus_act,
            n_active_perinhibit,
            enable_local_inhibit,enable_learning,topologyWraps)
@@ -50,7 +51,7 @@ struct SpatialPooler #<: Region
   proximalSynapses::AbstractSynapses
 
   # Construct and initialize
-  function SpatialPooler(params)
+  function SpatialPooler(params::SPParams= SPParams())
     """ NOTE:
       params: includes size (num of cols)
       Initialize potential synapses. For every column:
