@@ -3,5 +3,6 @@ ENV["JULIA_DEBUG"] = "all"
 logger = ConsoleLogger(stdout, Logging.Debug);
 
 include("../src/common.jl")
+include("../src/SpatialPooler.jl")
 
-synapses= SparseSynapses((10,10), (10,10), (T,m,n)-> sprand(T,m,n,6e-2))
+sp= SpatialPoolerM.SpatialPooler()

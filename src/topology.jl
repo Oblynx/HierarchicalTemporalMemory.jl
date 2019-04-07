@@ -6,64 +6,50 @@ struct hypercube{N,T} <: AbstractHypercube{N,T}
   xᶜ::NTuple{N,T}
   radius::UIntSP
   dims::NTuple{N,T}
+  indices::CartesianIndices{N}
 end
 struct wrapping_hypercube{N,T} <: AbstractHypercube{N,T}
   xᶜ::NTuple{N,T}
   radius::UIntSP
   dims::NTuple{N,T}
+  indices::CartesianIndices{N}
 end
-hypercube(xᶜ::NTuple{N,T},radius,dims::NTuple{N,T}) where{N,T}=
-    hypercube(convert(NTuple{N,UIntSP},xᶜ),UIntSP(radius),convert(NTuple{N,UIntSP},dims));
-wrapping_hypercube(xᶜ::NTuple{N,T},radius,dims::NTuple{N,T}) where{N,T}=
-    wrapping_hypercube(convert(NTuple{N,UIntSP},xᶜ),UIntSP(radius),convert(NTuple{N,UIntSP},dims));
-
-struct overflowingVector{N,T}
-  x::NTuple{N,T}
-  start::NTuple{N,T}
-  lims::NTuple{N,T}
+function hypercube(xᶜ::NTuple{N,T},radius,dims::NTuple{N,T}) where {N,T}
+  xᶜ= convert(NTuple{N,UIntSP},xᶜ)
+  radius= UIntSP(radius)
+  dims= convert(NTuple{N,UIntSP},dims)
+  hypercube(xᶜ,radius,dims, start(xᶜ,radius,dims))
 end
-overflowingVector(x::NTuple{N,T}, l) where {N,T}= overflowingVector(x,x,l)
-overflowingVector(a::overflowingVector)= overflowingVector(a.x,a.start,a.lims)
-overflowingVector(a::overflowingVector,xnew::NTuple{N,T}) where {N,T}=
-    overflowingVector(xnew,a.start,a.lims)
+function wrapping_hypercube(xᶜ::NTuple{N,T},radius,dims::NTuple{N,T}) where {N,T}
+  xᶜ= convert(NTuple{N,UIntSP},xᶜ)
+  radius= UIntSP(radius)
+  dims= convert(NTuple{N,UIntSP},dims)
+  wrapping_hypercube(xᶜ,radius,dims, startWrapping(xᶜ,radius,dims))
+end
 
 ### Hypercube iterator ###
 
 # Start at the "lower left" corner of the hypercube
-start(hc::hypercube{N,T}) where {N,T}=
-    overflowingVector(
-      max.(hc.xᶜ .- hc.radius, T(0)),
-      min.(hc.xᶜ .+ hc.radius, hc.dims.-T(1)))
-start(hc::wrapping_hypercube{N,T}) where {N,T}=
-    overflowingVector(
-      hc.xᶜ .- hc.radius,
-      hc.xᶜ .+ hc.radius)
+start(xᶜ::NTuple{N,T},radius::T,dims::NTuple{N,T}) where {N,T}=
+    CartesianIndices( map((a,b)-> a:b,
+      max.(xᶜ .- radius, T(0)),
+      min.(xᶜ .+ radius, dims.-T(1))))
+
+# BUG Wrapping can't work with a single CartesianIndices! It needs 2/4 of them!
+#   from UP -> DIM, 0 -> DOWN !!!
+startWrapping(xᶜ::NTuple{N,T},radius::T,dims::NTuple{N,T}) where {N,T}= begin
+    CartesianIndices( map((a,b)-> a:b,
+      wrapUnder.(xᶜ .- radius, dims),   # BUG wrapUnder does smt funky, should return 10
+      wrapOver.(xᶜ .+ radius, dims)))
+    end
+
+wrapOver(a::T, lim::T) where T= a>lim ? a-lim : a
+wrapUnder(a::T, lim::T) where T= a>lim ? lim-(typemax(T)-a)-T(1) : a
+
 
 # Iterate over a Hypercube
-struct HypercubeEnd end
-Base.iterate(::AbstractHypercube,::HypercubeEnd)= nothing
-function Base.iterate(hc::AbstractHypercube{N,T},
-                      x::overflowingVector{N,T}= start(hc)
-                     ) where {N,T}
-  x.x == x.lims ? (x.x, HypercubeEnd()) : (x.x, next(x))
-end
+Base.iterate(hc::AbstractHypercube)= iterate(hc.indices)
+Base.iterate(hc::AbstractHypercube,state)= iterate(hc.indices,state)
 
 Base.eltype(::Type{<:AbstractHypercube{N,T}}) where {N,T}= NTuple{N,T}
 Base.length(hc::AbstractHypercube)= (2*hc.radius+1).^length(hc.dims)
-
-
-### Utility ###
-
-next(x::overflowingVector{N,T}, i=1) where {N,T}=
-    x.x[i] < x.lims[i] ?
-      (@set x.x= setindex(x.x, x.x[i]+T(1),i)) :
-      next((@set x.x= setindex(x.x,x.start[i],i)), i+1)
-
-# Return x.x, but wrap around if <0 | >dims
-function get(x::overflowingVector)
-  underwrap= x.x.<0; overwrap= x.x.>=x.dims;
-  wrapped_x= x.x
-  wrapped_x[underwrap].= x.dims[underwrap] .+ x.x[underwrap]
-  wrapped_x[overwrap].= x.x[overwrap] .- x.dims[overwrap]
-  return wrapped_x
-end
