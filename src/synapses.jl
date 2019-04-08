@@ -67,7 +67,8 @@ Base.@propagate_inbounds \
 function Base.getindex(S::DenseSynapses{Npre,Npost}, Ipre::VecTuple{Npre,T},
     Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
   I_expanded= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
-  iArray(i)= collect(zip(i...))
+  # vec: to return Vector even if i is a single Tuple
+  iArray(i)= vec(collect(zip(i...)))
   S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]
 end
 Base.@propagate_inbounds \
@@ -78,7 +79,8 @@ Base.@propagate_inbounds \
 function Base.setindex!(S::DenseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre,T},
     Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
   I_expanded= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
-  iArray(i)= collect(zip(i...))
+  # vec: to return Vector even if i is a single Tuple
+  iArray(i)= vec(collect(zip(i...)))
   S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]= v
 end
 Base.@propagate_inbounds \

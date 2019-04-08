@@ -69,20 +69,30 @@ struct SpatialPooler{Nin,Nsp} #<: Region
 end
 
 # Make an input x spcols synapse permanence matrix
+const permT= SynapsePermanenceQuantization
 function initProximalSynapses(inputSize,spSize,input_potentialRadius,
       θ_potential_prob_prox,θ_permanence_prox)
   spColumns()= CartesianIndices(spSize)
   # Map column coordinates to their center in the input space. Column coords FROM 1 !!!
   xᶜ(yᵢ)= floor.(UIntSP, (yᵢ.-1) .* (inputSize./spSize)) .+1
   xᵢ(xᶜ)= [x.I for x in hypercube(UIntSP.(xᶜ),input_potentialRadius, inputSize)]
-  # Draw from uniform distribution
-  permanence(xᵢ)= sprand(SynapsePermanenceQuantization,length(xᵢ),1, 1-θ_potential_prob_prox)
 
-  proximalSynapses= SparseSynapses(inputSize,spSize)
+  # Draw permanences from uniform distribution. Connections aren't very sparse (40%),
+  #   so prefer a dense matrix
+  #permanence_sparse(xᵢ)= sprand(permT,length(xᵢ),1, 1-θ_potential_prob_prox)
+  permanence_dense(xᵢ)= begin
+    p= rand(permT,size(xᵢ))
+    effective_θ= floor(permT, (1-θ_potential_prob_prox)*typemax(permT))
+    p[p .> effective_θ].= 0
+    p[p .< effective_θ].= rand(permT, count(p.<effective_θ))
+    return p
+  end
+
+  proximalSynapses= DenseSynapses(inputSize,spSize)
   for yᵢ in spColumns()
     yᵢ= yᵢ.I
     xi= xᵢ(xᶜ(yᵢ))
-    proximalSynapses[xi, yᵢ].= permanence(xi);
+    proximalSynapses[xi, yᵢ]= permanence_dense(xi);
   end
   return proximalSynapses
 end
