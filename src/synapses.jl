@@ -66,9 +66,10 @@ Base.similar(S::AbstractSynapses, ::Type{elT}, idx::Dims) where {elT}=
 Base.@propagate_inbounds \
 function Base.getindex(S::DenseSynapses{Npre,Npost}, Ipre::VecTuple{Npre,T},
     Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
-  I_expanded= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
+  expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
   # vec: to return Vector even if i is a single Tuple
-  iArray(i)= vec(collect(zip(i...)))
+  (iArray(i)::Vector{NTuple{N,Int}} where N)= vec(collect(zip(i...)))
+  I_expanded= expand_i()
   S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]
 end
 Base.@propagate_inbounds \
@@ -78,9 +79,10 @@ Base.getindex(S::DenseSynapses, I::Vararg{Int,N}) where {N}= S.data[I...]
 Base.@propagate_inbounds \
 function Base.setindex!(S::DenseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre,T},
     Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
-  I_expanded= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
+  expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
   # vec: to return Vector even if i is a single Tuple
-  iArray(i)= vec(collect(zip(i...)))
+  (iArray(i)::Vector{NTuple{N,Int}} where N)= vec(collect(zip(i...)))
+  I_expanded= expand_i()
   S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]= v
 end
 Base.@propagate_inbounds \
@@ -95,7 +97,8 @@ SparseArrays.nnz(S::SparseSynapses)= nnz(S.data)
 Base.@propagate_inbounds \
 function Base.getindex(S::SparseSynapses{Npre,Npost}, Ipre::VecTuple{Npre,T},
     Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
-  I_expanded= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
+  expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
+  I_expanded= expand_i()
   idx= to_indices(S,I_expanded)
   S.data[linIdx(S.preLinIdx,idx[1:Npre]), linIdx(S.postLinIdx,idx[Npre+1:Npre+Npost])]
 end
@@ -109,7 +112,8 @@ end
 Base.@propagate_inbounds \
 function Base.setindex!(S::SparseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre,T},
     Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
-  I_expanded= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
+  expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
+  I_expanded= expand_i()
   idx= to_indices(S,I_expanded)
   _setindex_array!(S,v,idx)
 end

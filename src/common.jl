@@ -9,6 +9,7 @@ const FloatSP= Float32
 const SynapsePermanenceQuantization= UInt8
 const Option{T}= Union{T,Nothing}
 const Maybe{T}= Union{T,Missing}
+const VecInt{T<:Integer}= Union{Vector{T}, T}
 
 export IntSP, UIntSP, FloatSP, SynapsePermanenceQuantization
 

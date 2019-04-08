@@ -7,5 +7,6 @@ joinTuples(x)= x
 joinTuples(x,y)= (x..., y...)
 joinTuples(x,y,z...)= (x..., joinTuples(y,z...)...)
 
-cartesianIdx(iPre::VecTuple{N,T},iPost::VecTuple{N,T}) where {N,T<:Integer}=
-    map(x->CartesianIndex(joinTuples(x...)), Iterators.product(iPre,iPost))
+cartesianIdx(iPre::VecTuple{N1,T},iPost::VecTuple{N2,T}) where {N1,N2,T<:Integer}=
+    (vec(map(x->CartesianIndex(joinTuples(x...)), Iterators.product(iPre,iPost)))
+        ::Vector{CartesianIndex{N1+N2}})
