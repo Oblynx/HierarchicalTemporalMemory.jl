@@ -6,7 +6,7 @@ using Setfield
 const IntSP= Int32
 const UIntSP= UInt32
 const FloatSP= Float32
-const SynapsePermanenceQuantization= Int8
+const SynapsePermanenceQuantization= UInt8
 const Option{T}= Union{T,Nothing}
 const Maybe{T}= Union{T,Missing}
 

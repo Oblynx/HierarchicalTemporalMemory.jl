@@ -7,11 +7,10 @@ include("../src/topology.jl")
 
 # Test iteration over a hypercube
 startP= (50,80)
-startP= (10,10)
-radius= 20
-#hc1= wrapping_hypercube(startP,radius,(200,200));
-#a= [convert(NTuple{2,Int},i) for i in hc1]
-#reference= [i for i in zip(
-#    repeat(startP[1]-radius : startP[1]+radius,outer=2*radius+1),
-#    repeat(startP[2]-radius : startP[2]+radius,inner=2*radius+1))]
+radius= 30
+hc1= hypercube(startP,radius,(200,200));
+a= [convert(NTuple{2,Int},i) for i in hc1]
+reference= [i for i in zip(
+    repeat(startP[1]-radius : startP[1]+radius,outer=2*radius+1),
+    repeat(startP[2]-radius : startP[2]+radius,inner=2*radius+1))]
 @test a == reference

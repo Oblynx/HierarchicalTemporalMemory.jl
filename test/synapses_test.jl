@@ -37,7 +37,7 @@ display(nnz(synapses))
   display(synapses[3:4,3:8,5,:])
   display(synapses[3:4,3:6,5,1:2])
   synapses[3:4,3:6,5,1:2]= sprand(Int8, 8,2,1.)
-  display(synapses[3:4,3:6,5,1:2])
+  #display(synapses[3:4,3:6,5,1:2])
 end
 
 display(synapses[3,3:8,5,:])

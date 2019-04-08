@@ -1,7 +1,6 @@
 module SpatialPoolerM
 
 include("common.jl")
-using StaticArrays
 include("topology.jl")
 
 # NOTE: Instead of making type aliases, perhaps parametrize IntSP etc?
@@ -46,12 +45,13 @@ function SPParams(inputSize::NTuple{Nin,UIntSP}= UIntSP.((32,32)),
            enable_local_inhibit,enable_learning,topologyWraps)
 end
 
-struct SpatialPooler #<: Region
+struct SpatialPooler{Nin,Nsp} #<: Region
   params::SPParams
   proximalSynapses::AbstractSynapses
 
   # Construct and initialize
-  function SpatialPooler(params::SPParams= SPParams())
+  # Nin, Nsp: number of input and spatial pooler dimensions
+  function SpatialPooler(params::SPParams{Nin,Nsp}= SPParams()) where {Nin,Nsp}
     """ NOTE:
       params: includes size (num of cols)
       Initialize potential synapses. For every column:
@@ -61,19 +61,30 @@ struct SpatialPooler #<: Region
          - Init perm: rescale Z from [0..1-θ] -> [0..1]: Z/(1-θ)
     """
 
-    # Map column coordinates to their center in the input space. Column coords FROM 0 !!!
-    xᶜ(col_y, colDim,inDim)= round(col_y.*inDim./colDim)
-    input_hypercube(xᶜ,radius,inDim,topologyWraps)=
-        topologyWraps ? wrapping_hypercube(xᶜ,radius, inDim) :
-                        hypercube(xᶜ,radius, inDim);
-
-    proximalSynapses= initProximalSynapses()
+    proximalSynapses= initProximalSynapses(params.inputSize,params.spSize,
+        params.input_potentialRadius,params.θ_potential_prob_prox,
+        params.θ_permanence_prox)
+    new{Nin,Nsp}(params,proximalSynapses)
   end
 end
 
-function initProximalSynapses(inputSize,spSize,xᶜ,input_hypercube)
-  # Make an input x spcols permanence sparse matrix
-  # sparse(inIdx, colIdx, perm)
+# Make an input x spcols synapse permanence matrix
+function initProximalSynapses(inputSize,spSize,input_potentialRadius,
+      θ_potential_prob_prox,θ_permanence_prox)
+  spColumns()= CartesianIndices(spSize)
+  # Map column coordinates to their center in the input space. Column coords FROM 1 !!!
+  xᶜ(yᵢ)= floor.(UIntSP, (yᵢ.-1) .* (inputSize./spSize)) .+1
+  xᵢ(xᶜ)= [x.I for x in hypercube(UIntSP.(xᶜ),input_potentialRadius, inputSize)]
+  # Draw from uniform distribution
+  permanence(xᵢ)= sprand(SynapsePermanenceQuantization,length(xᵢ),1, 1-θ_potential_prob_prox)
+
+  proximalSynapses= SparseSynapses(inputSize,spSize)
+  for yᵢ in spColumns()
+    yᵢ= yᵢ.I
+    xi= xᵢ(xᶜ(yᵢ))
+    proximalSynapses[xi, yᵢ].= permanence(xi);
+  end
+  return proximalSynapses
 end
 
 
