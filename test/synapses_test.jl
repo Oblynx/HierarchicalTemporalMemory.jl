@@ -8,9 +8,10 @@ module HTMTest
 using Test
 include("../src/common.jl")
 import Random.seed!
-
-# Test DenseSynapses
 seed!(0)
+
+# ## Test DenseSynapses
+
 inputDims= (4,5);
 spDims= (2,3);
 # Create a Synapse array with these dimensions
@@ -24,7 +25,17 @@ synapses= DenseSynapses(inputDims, spDims, rand);
   @test synapses[3,4,:,:] == [0x97 0x01 0x02;0x51 0x03 0x04]
 end
 
-# Test SparseSynapses
+# Test index-by-NTuple (coordinates)
+# TODO compare results with ground truth
+x= [(2,1), (4,5)]
+y= [(2,3), (1,1), (2,2)]
+display(synapses[x,y])
+synapses[x,y]= ones(UInt8, 2,3)
+display(synapses[x,y])
+
+
+# ## Test SparseSynapses
+
 # TODO compare results with ground truth
 seed!(0)
 inputDims= (100,50);
@@ -53,7 +64,12 @@ display(nnz(synapses))
   synapses[:,1,1,1]= rand(SynapsePermanenceQuantization, 100)
 end
 
-# Test `similar`
-display(synapses[3,3:8,5,:])
+# Test index-by-NTuple (coordinates)
+# TODO compare results with ground truth
+x= [(2,1), (4,5)]
+y= [(2,3), (1,1), (2,2)]
+display(synapses[x,y])
+synapses[x,y]= ones(UInt8, 2,3)
+display(synapses[x,y])
 
 end #module

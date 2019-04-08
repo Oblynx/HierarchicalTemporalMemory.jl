@@ -12,6 +12,7 @@ const Maybe{T}= Union{T,Missing}
 
 export IntSP, UIntSP, FloatSP, SynapsePermanenceQuantization
 
+include("tupleUtils.jl")
 include("synapses.jl")
 
 const CellActivity= BitArray

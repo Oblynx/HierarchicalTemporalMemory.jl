@@ -62,9 +62,25 @@ Base.similar(S::AbstractSynapses, ::Type{elT}, idx::Dims) where {elT}=
 
 # ## Dense Synapses
 
+# Special getindex! for indexing with 2 tuples {pre,post}
+Base.@propagate_inbounds \
+function Base.getindex(S::DenseSynapses{Npre,Npost}, Ipre::VecTuple{Npre,T},
+    Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
+  I_expanded= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
+  iArray(i)= collect(zip(i...))
+  S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]
+end
 Base.@propagate_inbounds \
 Base.getindex(S::DenseSynapses, I::Vararg{Int,N}) where {N}= S.data[I...]
-    #get(S.data, I, zero(SynapsePermanenceQuantization))
+
+# Special setindex! for indexing with 2 tuples {pre,post}
+Base.@propagate_inbounds \
+function Base.setindex!(S::DenseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre,T},
+    Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
+  I_expanded= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
+  iArray(i)= collect(zip(i...))
+  S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]= v
+end
 Base.@propagate_inbounds \
 Base.setindex!(S::DenseSynapses, v, I::Vararg{Int,N}) where {N}= (S.data[I...]= v)
 
@@ -73,26 +89,30 @@ Base.setindex!(S::DenseSynapses, v, I::Vararg{Int,N}) where {N}= (S.data[I...]= 
 
 SparseArrays.nnz(S::SparseSynapses)= nnz(S.data)
 
+# Special getindex for indexing with 2 tuples {pre,post}
+Base.@propagate_inbounds \
+function Base.getindex(S::SparseSynapses{Npre,Npost}, Ipre::VecTuple{Npre,T},
+    Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
+  I_expanded= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
+  idx= to_indices(S,I_expanded)
+  S.data[linIdx(S.preLinIdx,idx[1:Npre]), linIdx(S.postLinIdx,idx[Npre+1:Npre+Npost])]
+end
 Base.@propagate_inbounds \
 function Base.getindex(S::SparseSynapses{Npre,Npost}, I...) where {Npre,Npost}
   idx= to_indices(S,I)
   S.data[linIdx(S.preLinIdx,idx[1:Npre]), linIdx(S.postLinIdx,idx[Npre+1:Npre+Npost])]
 end
 
-# NOTE reshape v from {Npre,Npost}->internal rep?
 # Special setindex! for indexing with 2 tuples {pre,post}
-const VecTuple{N,T}= Union{NTuple{N,T}, Vector{NTuple{N,T}}}
 Base.@propagate_inbounds \
 function Base.setindex!(S::SparseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre,T},
     Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
-  expand(I::Vector{NTuple{N,T}}) where {N,T}= (map(a->a[i], I) for i in 1:N)
-  expand(I::NTuple{N,T}) where {N,T}= (I[i] for i in 1:N)
   I_expanded= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
   idx= to_indices(S,I_expanded)
   _setindex_array!(S,v,idx)
 end
 Base.@propagate_inbounds \
-function Base.setindex!(S::SparseSynapses{Npre,Npost}, v, I...) where {Npre,Npost,N}
+function Base.setindex!(S::SparseSynapses{Npre,Npost}, v, I...) where {Npre,Npost}
   #length(I) == Npre+Npost || error("All dimensions must be specified when accessing SparseSynapses")
   idx= to_indices(S,I)
   _setindex_array!(S,v,idx)
@@ -116,10 +136,9 @@ end
 
 # ## Utility
 
+# When indexing into a LinearIndices with Vectors {i,j}, output Kronecker product {i⊗j}
 Base.@propagate_inbounds \
-function Base.getindex(iter::LinearIndices{N}, i::Vararg{Vector{<:Integer},N}) where N
-  idx= collect(zip(i...))
-  map(i->iter[i...], idx)
-end
+Base.getindex(iter::LinearIndices{N}, i::Vararg{Vector{<:Integer},N}) where N=
+    map(i->iter[i...], collect(zip(i...)))
 linIdx(linIdxArray, idx::NTuple{N,<:Integer}) where N= linIdxArray[idx...]
 linIdx(linIdxArray, idx)= vec(linIdxArray[idx...])
