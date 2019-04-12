@@ -1,4 +1,6 @@
 # ## Synapse type definitions
+# This is low-level code that implements custom Array behavior on synapse permanence arrays
+
 """
   Synapses is basically a wrapper around a (possibly sparse) matrix.
     Connects pre- & post-synaptic entities.
@@ -64,26 +66,50 @@ Base.similar(S::AbstractSynapses, ::Type{elT}, idx::Dims) where {elT}=
 
 # Special getindex! for indexing with 2 tuples {pre,post}
 Base.@propagate_inbounds \
-function Base.getindex(S::DenseSynapses{Npre,Npost}, Ipre::VecTuple{Npre,T},
-    Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
+function Base.getindex(S::DenseSynapses{Npre,Npost}, Ipre::VecTuple{Npre},
+    Ipost::VecTuple{Npost}) where {Npre,Npost}
   expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
   # vec: to return Vector even if i is a single Tuple
   (iArray(i)::Vector{NTuple{N,Int}} where N)= vec(collect(zip(i...)))
   I_expanded= expand_i()
   S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]
 end
+# Ipre, Ipost generic method: assume Ipre, Ipost are iterators
+# TODO figure out how to handle MethodErrors, if they aren't iterators!
+Base.@propagate_inbounds \
+function Base.getindex(S::DenseSynapses, Ipre, Ipost)
+  maybeRepeat(i::Tuple)= Iterators.repeated(i)
+  maybeRepeat(i)= (cartIdx.I for cartIdx in i)
+  iterLength(i::Iterators.Repeated)= typemax(Int)
+  iterLength(i)= length(i)
+  idx(iPre,iPost)= Iterators.take(Iterators.product(iPre,iPost),
+                                  min(iterLength(iPre),iterLength(iPost)))
+  [S.data[joinTuples(i...)...] for i in idx(maybeRepeat(Ipre),maybeRepeat(Ipost))]
+end
 Base.@propagate_inbounds \
 Base.getindex(S::DenseSynapses, I::Vararg{Int,N}) where {N}= S.data[I...]
 
 # Special setindex! for indexing with 2 tuples {pre,post}
 Base.@propagate_inbounds \
-function Base.setindex!(S::DenseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre,T},
-    Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
+function Base.setindex!(S::DenseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre},
+    Ipost::VecTuple{Npost}) where {Npre,Npost}
   expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
   # vec: to return Vector even if i is a single Tuple
   (iArray(i)::Vector{NTuple{N,Int}} where N)= vec(collect(zip(i...)))
   I_expanded= expand_i()
   S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]= v
+end
+Base.@propagate_inbounds \
+function Base.setindex!(S::DenseSynapses, v, Ipre, Ipost)
+  maybeRepeat(i::Tuple)= Iterators.repeated(i)
+  maybeRepeat(i)= (cartIdx.I for cartIdx in i)
+  iterLength(i::Iterators.Repeated)= typemax(Int)
+  iterLength(i)= length(i)
+  idx(iPre,iPost)= Iterators.take(Iterators.product(iPre,iPost,eachindex(v)),
+                                  min(iterLength(iPre),iterLength(iPost)))
+
+  foreach((i)-> (S.data[joinTuples(i[1:2]...)...]= v[i[3]]),
+          idx(maybeRepeat(Ipre),maybeRepeat(Ipost)))
 end
 Base.@propagate_inbounds \
 Base.setindex!(S::DenseSynapses, v, I::Vararg{Int,N}) where {N}= (S.data[I...]= v)

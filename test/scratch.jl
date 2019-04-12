@@ -11,5 +11,5 @@ include("../src/SpatialPooler.jl")
 
 #display(@benchmark sp= SpatialPoolerM.SpatialPooler())
 
- sp= SpatialPoolerM.SpatialPooler(SpatialPoolerM.SPParams(
-        UIntSP.((40,40)),UIntSP.((100,100)), input_potentialRadius=16))
+sp= SpatialPoolerM.SpatialPooler(SpatialPoolerM.SPParams(
+      UIntSP.((40,40)),UIntSP.((100,100)), input_potentialRadius=2))

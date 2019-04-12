@@ -2,6 +2,7 @@ module SpatialPoolerM
 
 include("common.jl")
 include("topology.jl")
+include("dynamical_systems.jl")
 
 # NOTE: Instead of making type aliases, perhaps parametrize IntSP etc?
 struct SPParams{Nin,Nsp}
@@ -47,59 +48,23 @@ end
 
 struct SpatialPooler{Nin,Nsp} #<: Region
   params::SPParams
-  proximalSynapses::AbstractSynapses
+  proximalSynapses::ProximalSynapses
+  φ::InhibitionRadius
 
-  # Construct and initialize
   # Nin, Nsp: number of input and spatial pooler dimensions
   function SpatialPooler(params::SPParams{Nin,Nsp}= SPParams()) where {Nin,Nsp}
-    """ NOTE:
-      params: includes size (num of cols)
-      Initialize potential synapses. For every column:
-      - find its center in the input space
-      - for every input in hypercube, draw rand Z
-        - If < 1-θ_potential_prob_prox
-         - Init perm: rescale Z from [0..1-θ] -> [0..1]: Z/(1-θ)
-    """
-
-    proximalSynapses= initProximalSynapses(params.inputSize,params.spSize,
-        params.input_potentialRadius,params.θ_potential_prob_prox,
-        params.θ_permanence_prox)
-    new{Nin,Nsp}(params,proximalSynapses)
+    new{Nin,Nsp}(params,
+        ProximalSynapses(params.inputSize,params.spSize,
+            params.input_potentialRadius,params.θ_potential_prob_prox,
+            params.θ_permanence_prox),
+        InhibitionRadius(params.input_potentialRadius)
+    )
   end
-end
-
-# Make an input x spcols synapse permanence matrix
-const permT= SynapsePermanenceQuantization
-function initProximalSynapses(inputSize,spSize,input_potentialRadius,
-      θ_potential_prob_prox,θ_permanence_prox)
-  spColumns()= CartesianIndices(spSize)
-  # Map column coordinates to their center in the input space. Column coords FROM 1 !!!
-  xᶜ(yᵢ)= floor.(UIntSP, (yᵢ.-1) .* (inputSize./spSize)) .+1
-  xᵢ(xᶜ)= [x.I for x in hypercube(UIntSP.(xᶜ),input_potentialRadius, inputSize)]
-
-  # Draw permanences from uniform distribution. Connections aren't very sparse (40%),
-  #   so prefer a dense matrix
-  #permanence_sparse(xᵢ)= sprand(permT,length(xᵢ),1, 1-θ_potential_prob_prox)
-  permanence_dense(xᵢ)= begin
-    p= rand(permT,size(xᵢ))
-    effective_θ= floor(permT, (1-θ_potential_prob_prox)*typemax(permT))
-    p[p .> effective_θ].= 0
-    p[p .< effective_θ].= rand(permT, count(p.<effective_θ))
-    return p
-  end
-
-  proximalSynapses= DenseSynapses(inputSize,spSize)
-  for yᵢ in spColumns()
-    yᵢ= yᵢ.I
-    xi= xᵢ(xᶜ(yᵢ))
-    proximalSynapses[xi, yᵢ]= permanence_dense(xi);
-  end
-  return proximalSynapses
 end
 
 
 """
-      step!(z::CellActivity,proximalSynapses::Synapses; params::SPParams)
+      step!(z::CellActivity, sp::SpatialPooler)
 
   Evolve the Spatial Pooler to the next timestep.
 
@@ -171,9 +136,10 @@ end
   (param: `enable_learning`)
 
 """
-#function step!(z::CellActivity,proximalSynapses::Synapses; params::SPParams)
 function step!(z::CellActivity, sp::SpatialPooler)
-
+  W()= sp.proximalSynapses .> sp.params.θ_permanence_prox
+  N(y,φ)= (j for j in hypersphere(y,φ,sp.spSize) if j!=y)
+  #φ(W)=
 end
 
 end
