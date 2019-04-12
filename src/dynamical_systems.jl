@@ -6,7 +6,9 @@ under the influence of other elements of the Spatial Pooler. It provides an init
 """
 mutable struct InhibitionRadius <:AbstractFloat
   φ::Float32
-  InhibitionRadius(x)= x>=0 ? new(x) : error("Inhibition radius >0")
+  InhibitionRadius(x,enable_local_inhibit=true)= enable_local_inhibit ?
+      (x>=0 ? new(x) : error("Inhibition radius >0")) :
+      new(Inf)
 end
 #Base.convert(::Type{InhibitionRadius}, x::T) where {T<:Number}= InhibitionRadius(x)
 Base.convert(::Type{N}, x::InhibitionRadius) where {N<:Number}= convert(N,x.φ)

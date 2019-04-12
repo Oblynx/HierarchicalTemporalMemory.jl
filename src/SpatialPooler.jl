@@ -50,6 +50,7 @@ struct SpatialPooler{Nin,Nsp} #<: Region
   params::SPParams
   proximalSynapses::ProximalSynapses
   φ::InhibitionRadius
+  b::Boost
 
   # Nin, Nsp: number of input and spatial pooler dimensions
   function SpatialPooler(params::SPParams{Nin,Nsp}= SPParams()) where {Nin,Nsp}
@@ -57,7 +58,7 @@ struct SpatialPooler{Nin,Nsp} #<: Region
         ProximalSynapses(params.inputSize,params.spSize,
             params.input_potentialRadius,params.θ_potential_prob_prox,
             params.θ_permanence_prox),
-        InhibitionRadius(params.input_potentialRadius)
+        InhibitionRadius(params.input_potentialRadius, params.enable_local_inhibit)
     )
   end
 end
@@ -137,9 +138,23 @@ end
 
 """
 function step!(z::CellActivity, sp::SpatialPooler)
+  # Definitions taken directly from [section 2, doi: 10.3389]
+
+  # Activation
+  # W: Connected synapses
   W()= sp.proximalSynapses .> sp.params.θ_permanence_prox
-  N(y,φ)= (j for j in hypersphere(y,φ,sp.spSize) if j!=y)
-  #φ(W)=
+  # N: neighborhood
+  N(y)= (j for j in hypersphere(y,sp.φ,sp.spSize) if j!=y)
+  # o: overlap
+  o(W)= sp.b .* (W*z)
+  # V: overlap values of neighborhood
+  V(y,o)= o[N(y)]
+  # a: activation
+  a(o)= @. (o > percentile(V(o), 100 - sp.params.n_active_perinhibit)) & (o > sp.params.θ_stimulus_act)
+
+  # Learning
+  step!(sp.φ,z)
+  step!(sp.b,z)
 end
 
 end
