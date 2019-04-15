@@ -14,6 +14,7 @@ end
 Base.convert(::Type{N}, x::InhibitionRadius) where {N<:Number}= convert(N,x.φ)
 Base.promote_rule(::Type{InhibitionRadius}, ::Type{T}) where {T<:Number}= Float32
 Float32(x::InhibitionRadius)= x.φ
+Int(x::InhibitionRadius)= round(Int,x.φ)
 
 
 # ## Proximal Synapses
@@ -59,4 +60,12 @@ mutable struct ProximalSynapses
     proximalSynapses= DenseSynapses(inputSize,spSize)
     new(fill!(proximalSynapses))
   end
+end
+
+function step!(s::ProximalSynapses, z::CellActivity, p)
+end
+
+
+# ## Boosting factor
+mutable struct Boosting
 end

@@ -1,5 +1,3 @@
-# Rely on nupic.core/topology. The hypercube is not an precomputed array, but an iterator
-# that can provide the next value
 abstract type AbstractHypercube{N,T} end
 
 struct hypercube{N,T<:Integer} <: AbstractHypercube{N,T}
@@ -25,6 +23,7 @@ end
 
 # Good first approximation!
 const hypersphere{N,T}= hypercube{N,T}
+hypersphere(xᶜ::NTuple{N},radius,dims::NTuple{N}) where {N}= hypercube(xᶜ,radius,dims)
 
 # Start at the "lower left" corner of the hypercube
 start(xᶜ::NTuple{N},radius,dims::NTuple{N}) where {N}=

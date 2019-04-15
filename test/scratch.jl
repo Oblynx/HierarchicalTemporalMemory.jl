@@ -6,10 +6,10 @@ using BenchmarkTools
 import Random.seed!
 seed!(0)
 
-include("../src/common.jl")
-include("../src/SpatialPooler.jl")
+includet("../src/common.jl")
+includet("../src/SpatialPooler.jl")
 
 #display(@benchmark sp= SpatialPoolerM.SpatialPooler())
 
 sp= SpatialPoolerM.SpatialPooler(SpatialPoolerM.SPParams(
-      UIntSP.((40,40)),UIntSP.((100,100)), input_potentialRadius=2))
+      UIntSP.((4,4)),UIntSP.((8,8)), input_potentialRadius=2))
