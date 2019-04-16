@@ -1,6 +1,11 @@
 # ## Synapse type definitions
 # This is low-level code that implements custom Array behavior on synapse permanence arrays
 
+struct DummyArray{N} <: DenseArray{Int,N}
+  dims::NTuple{N,Int}
+end
+Base.size(d::DummyArray)= d.dims
+
 """
   Synapses is basically a wrapper around a (possibly sparse) matrix.
     Connects pre- & post-synaptic entities.
@@ -60,13 +65,38 @@ Base.show(io, mime::MIME"text/plain", S::AbstractSynapses)= show(io,mime,S.data)
 Base.display(S::AbstractSynapses)= display(S.data)
 Base.similar(S::AbstractSynapses, ::Type{elT}, idx::Dims) where {elT}=
     similar(S.data, elT, idx)
+Base.getindex(S::AbstractSynapses, I...)=
+    error("AbstractSynapses instances can only be indexed with 2 tuples: pre- & post-synaptic coords")
+Base.lastindex(::AbstractSynapses, d)=
+    error("'end' can't be used to index AbstractSynapses, because the dimension to which it refers isn't clear")
 
 
 # ## Dense Synapses
 
+Base.@propagate_inbounds \
+function Base.getindex(S::DenseSynapses{Npre,Npost}, iPre,iPost) where {Npre,Npost}
+  @debug iPre
+  iPre= @>> iPre vecTuple_2_tupleVec to_indices(DummyArray(S.preDims))
+  iPost= @>> iPost vecTuple_2_tupleVec to_indices(DummyArray(S.postDims))
+  @debug iPre
+  S.data[iPre...,iPost...]
+end
+
+Base.@propagate_inbounds \
+function Base.setindex!(S::DenseSynapses{Npre,Npost},v, iPre,iPost) where {Npre,Npost}
+  @debug iPre
+  iPre= @>> iPre vecTuple_2_tupleVec to_indices(DummyArray(S.preDims))
+  iPost= @>> iPost vecTuple_2_tupleVec to_indices(DummyArray(S.postDims))
+  @debug iPre
+  i_cartesian=
+  S.data[i_cartesian]= v
+end
+
+
+
 # Special getindex! for indexing with 2 tuples {pre,post}
 Base.@propagate_inbounds \
-function Base.getindex(S::DenseSynapses{Npre,Npost}, Ipre::VecTuple{Npre},
+function getindex(S::DenseSynapses{Npre,Npost}, Ipre::VecTuple{Npre},
     Ipost::VecTuple{Npost}) where {Npre,Npost}
   expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
   # vec: to return Vector even if i is a single Tuple
@@ -77,7 +107,7 @@ end
 # Ipre, Ipost generic method: assume Ipre, Ipost are iterators
 # TODO figure out how to handle MethodErrors, if they aren't iterators!
 Base.@propagate_inbounds \
-function Base.getindex(S::DenseSynapses, Ipre, Ipost)
+function getindex(S::DenseSynapses, Ipre, Ipost)
   maybeRepeat(i::Tuple)= Iterators.repeated(i)
   maybeRepeat(i)= (cartIdx.I for cartIdx in i)
   iterLength(i::Iterators.Repeated)= typemax(Int)
@@ -86,12 +116,12 @@ function Base.getindex(S::DenseSynapses, Ipre, Ipost)
                                   min(iterLength(iPre),iterLength(iPost)))
   [S.data[joinTuples(i...)...] for i in idx(maybeRepeat(Ipre),maybeRepeat(Ipost))]
 end
-Base.@propagate_inbounds \
-Base.getindex(S::DenseSynapses, I::Vararg{Int,N}) where {N}= S.data[I...]
+
+
 
 # Special setindex! for indexing with 2 tuples {pre,post}
 Base.@propagate_inbounds \
-function Base.setindex!(S::DenseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre},
+function setindex!(S::DenseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre},
     Ipost::VecTuple{Npost}) where {Npre,Npost}
   expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
   # vec: to return Vector even if i is a single Tuple
@@ -100,7 +130,7 @@ function Base.setindex!(S::DenseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre},
   S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]= v
 end
 Base.@propagate_inbounds \
-function Base.setindex!(S::DenseSynapses, v, Ipre, Ipost)
+function setindex!(S::DenseSynapses, v, Ipre, Ipost)
   maybeRepeat(i::Tuple)= Iterators.repeated(i)
   maybeRepeat(i)= (cartIdx.I for cartIdx in i)
   iterLength(i::Iterators.Repeated)= typemax(Int)
@@ -111,8 +141,6 @@ function Base.setindex!(S::DenseSynapses, v, Ipre, Ipost)
   foreach((i)-> (S.data[joinTuples(i[1:2]...)...]= v[i[3]]),
           idx(maybeRepeat(Ipre),maybeRepeat(Ipost)))
 end
-Base.@propagate_inbounds \
-Base.setindex!(S::DenseSynapses, v, I::Vararg{Int,N}) where {N}= (S.data[I...]= v)
 
 
 # ## Sparse Synapses

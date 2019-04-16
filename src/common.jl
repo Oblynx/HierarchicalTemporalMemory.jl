@@ -1,6 +1,6 @@
 using SparseArrays
 using StaticArrays
-using Setfield
+using Lazy
 
 # Type aliases
 const IntSP= Int32

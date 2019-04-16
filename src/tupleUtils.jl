@@ -19,3 +19,6 @@ cartesianIdx(iPre::VecTuple{N1,T},iPost::VecTuple{N2,T}) where {N1,N2,T<:Integer
 #      map( x->CartesianIndex(joinTuples(x...)) )
 #      vec
 #    end )::Vector{CartesianIndex{N1+N2}}
+
+vecTuple_2_tupleVec(i::Vector{NTuple{N,Int}}) where N= (collect(expand(i))...,)
+vecTuple_2_tupleVec(i)= i
