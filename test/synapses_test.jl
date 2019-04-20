@@ -17,31 +17,46 @@ module HTMTest
 
   # Test access/modify patterns
   begin
-    display(synapses[(2,2),(1,3)])
-    @test synapses[(2,2),(1,3)] == synapses.data[6,5]
+    @test synapses[(2,2),(1,3)] == synapses.data[inputDims[1]*1+2,spDims[1]*2+1]
     @test_throws ErrorException synapses[(1:3,3:end),(1,end)]
-    @test synapses[(1:3,3:5),(1,3)] == synapses.data[[9:11,13:15,17:19],5]
-    @test synapses[(3,4),(:,2:3)] == synapses.data[15,[3:4,5:6]]
-    #synapses[(3,4),(:,2:3)]= [1 2; 3 4]
-    #@test synapses[(3,4),(:,2:3)] == synapses.data[3,4,:,:]
+    @test synapses[(1:3,3:5),(1,3)] == synapses.data[vec(inputDims[1].*(2:4)'.+(1:3)), spDims[1]*2+1]
+    @test synapses[(3,4),(:,2:3)] == synapses.data[inputDims[1]*3+3,
+                                      vec(spDims[1].*(1:2)'.+(1:spDims[1]))]
+    beforeMod= synapses.data[inputDims[1]*3+3,vec(spDims[1].*(1:2)'.+(1:spDims[1]))]
+    synapses[(3,4),(:,2:3)]= reshape(1:(2*spDims[1]), spDims[1],2)
+    @test (synapses[(3,4),(:,2:3)] == synapses.data[inputDims[1]*3+3,vec(spDims[1].*(1:2)'.+(1:spDims[1]))] &&
+           synapses[(3,4),(:,2:3)] != beforeMod)
   end
 
   # Test array indices
   x= [(2,1), (4,5)]
   y= [(2,3), (1,1), (2,2)]
   begin
-    display(synapses[x,y])
     synapses[x,y]= ones(UInt8, 2,3)
-    display(synapses[x,y])
+    @test (synapses[x,y] .== 1)|> all
+  end
+
+  # boolean indexing?
+  begin
+    connectedSyn= synapses .> UIntSP(100)
+    @test synapses[connectedSyn] == synapses.data[connectedSyn]
+  end
+
+  # Test linear algebra
+  begin
+    a= rand(1,prod(inputDims))
+    b= rand(prod(spDims))
+    @test a*synapses == a*synapses.data
+    @test synapses*b == synapses.data*b
   end
 
   # aaaand... index iterators!
   begin
-    ix= (i for i in x)
+    include("../src/topology.jl")
+    ix= hypercube((2,2),1,inputDims)
     iy= (i for i in y)
-    display(synapses[ix,iy])
-    synapses[ix,iy]= ones(UInt8, 2,3)
-    display(synapses[ix,iy])
+    synapses[ix,iy]= 3*ones(UInt8, length(ix),length(iy))
+    @test (synapses[ix,iy] .== 3)|> all
   end
 #end
 #test_denseSynapses()
