@@ -6,8 +6,8 @@ include("dynamical_systems.jl")
 
 # NOTE: Instead of making type aliases, perhaps parametrize IntSP etc?
 struct SPParams{Nin,Nsp}
-  inputSize::NTuple{Nin,UIntSP}
-  spSize::NTuple{Nsp,UIntSP}
+  inputSize::NTuple{Nin,Int}
+  spSize::NTuple{Nsp,Int}
   input_potentialRadius::UIntSP
   sparsity::FloatSP
   θ_potential_prob_prox::FloatSP
@@ -21,8 +21,8 @@ end
 
 # SPParams convenience constructor and default arguments.
 #   Obligatory validity checks should be an inner constructor
-function SPParams(inputSize::NTuple{Nin,UIntSP}= UIntSP.((32,32)),
-                  spSize::NTuple{Nsp,UIntSP}= UIntSP.((64,64));
+function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
+                  spSize::NTuple{Nsp,Int}= (64,64);
                   input_potentialRadius=16,
                   sparsity=0.2,
                   θ_potential_prob_prox=0.5,
@@ -160,6 +160,8 @@ function sp_activation(synapses,φ,b, spSize,params)
   V(y,o)= o[N(y)]
   # a: activation
   a(o)= @. (o > percentile(V(o), 100 - params.n_active_perinhibit)) & (o > params.θ_stimulus_act)
+
+  
 end
 
 end

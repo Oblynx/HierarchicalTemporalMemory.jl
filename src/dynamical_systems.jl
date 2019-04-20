@@ -42,7 +42,7 @@ mutable struct ProximalSynapses
     #   so prefer a dense matrix
     #permanence_sparse(xᵢ)= sprand(permT,length(xᵢ),1, 1-θ_potential_prob_prox)
     permanence_dense(xᵢ)= begin
-      p= rand(permT,size(xᵢ))
+      p= rand(permT,length(xᵢ),1)
       effective_θ= floor(permT, (1-θ_potential_prob_prox)*typemax(permT))
       p[p .> effective_θ].= 0
       p[p .< effective_θ].= rand(permT, count(p.<effective_θ))
@@ -52,7 +52,7 @@ mutable struct ProximalSynapses
       for yᵢ in spColumns()
         yᵢ= yᵢ.I
         xi= xᵢ(xᶜ(yᵢ))
-        proximalSynapses[xi, yᵢ]= permanence_dense(xi);
+        proximalSynapses[xi, yᵢ]= permanence_dense(xi)
       end
       return proximalSynapses
     end
