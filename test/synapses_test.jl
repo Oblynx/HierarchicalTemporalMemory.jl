@@ -5,11 +5,12 @@ logger = ConsoleLogger(stdout, Logging.Debug);
 using SparseArrays
 
 module HTMTest
- using Test
- include("../src/common.jl")
- import Random.seed!
+using Test
+include("../src/common.jl")
+include("../src/topology.jl")
+import Random.seed!
 
-#function test_denseSynapses()
+function test_denseSynapses()
   seed!(0)
   inputDims= (4,5);
   spDims= (2,3);
@@ -52,7 +53,6 @@ module HTMTest
 
   # aaaand... index iterators!
   begin
-    include("../src/topology.jl")
     ix= hypercube((2,2),1,inputDims)
     iy= (i for i in y)
     synapses[ix,iy]= 3*ones(UInt8, length(ix),length(iy))
@@ -62,14 +62,25 @@ module HTMTest
   # Views
   begin
     iy= hypercube((2,2),1,spDims)
-    beforeMod= synapses[x,iy]
     synapseView= @view synapses[x,iy]
-    @test (synapseView == beforeMod)
+    @test (synapseView == synapses[x,iy])
     synapseView.= 5
     @test (synapseView .== 5)|> all
   end
-#end
-#test_denseSynapses()
+
+  # Broadcasting. Test is similar to synaptic plasticity
+  begin
+    connected_high= 0x80 .< synapses
+    countHigh()= (0xd0 .< synapses)|> count
+    countConnected()= (@. 0x80 < synapses < 0xd0)|> count
+    beforeHigh= countHigh()
+    beforeConnected= countConnected()
+    inc(s,a)= s<0xf0 ? s+a : s
+    @. synapses[connected_high]= min(0xcf, inc(synapses[connected_high],0x10))
+    @test countConnected() == beforeConnected + beforeHigh
+  end
+end
+test_denseSynapses()
 
 
 function test_sparseSynapses()

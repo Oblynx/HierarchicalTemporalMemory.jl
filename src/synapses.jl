@@ -69,15 +69,26 @@ Base.similar(S::AbstractSynapses, ::Type{elT}, idx::Dims) where {elT}=
     similar(S.data, elT, idx)
 Base.getindex(S::AbstractSynapses, I...)=
     error("AbstractSynapses instances can only be indexed with 2 tuples: pre- & post-synaptic coords")
+Base.setindex!(S::AbstractSynapses,v ,I...)=
+    error("AbstractSynapses instances can only be indexed with 2 tuples: pre- & post-synaptic coords")
 Base.@propagate_inbounds \
 Base.getindex(S::AbstractSynapses, linIdx)= S.data[linIdx]
+Base.@propagate_inbounds \
+Base.setindex!(S::AbstractSynapses,v, linIdx)= (S.data[linIdx]= v)
 Base.lastindex(::AbstractSynapses, d)=
     error("'end' can't be used to index AbstractSynapses, because the dimension to which it refers isn't clear")
 
 
 # ## Dense Synapses
+# Methods for 2 linear indices
 Base.@propagate_inbounds \
 Base.getindex(S::DenseSynapses, linIdxPre::Int,linIdxPost::Int)= S.data[linIdxPre,linIdxPost]
+Base.@propagate_inbounds \
+Base.view(S::DenseSynapses, linIdxPre::Int,linIdxPost::Int)= view(S.data,linIdxPre,linIdxPost)
+Base.@propagate_inbounds \
+Base.setindex!(S::DenseSynapses,v, linIdxPre::Int,linIdxPost::Int)= (S.data[linIdxPre,linIdxPost]= v)
+
+# Methods for 2 Cartesian indices
 Base.@propagate_inbounds \
 Base.getindex(S::DenseSynapses, iPre,iPost)=
   getdata(S.data,
@@ -96,7 +107,6 @@ Base.setindex!(S::DenseSynapses, v,iPre,iPost)=
     (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
     (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
   )
-
 
 # ## Sparse Synapses
 
