@@ -84,6 +84,11 @@ Base.getindex(S::DenseSynapses{Npre,Npost}, iPre,iPost) where {Npre,Npost}=
   )
 Base.@propagate_inbounds \
 Base.setindex!(S::DenseSynapses{Npre,Npost}, v,iPre,iPost) where {Npre,Npost}=
+Base.view(S::DenseSynapses, iPre,iPost)=
+  viewdata(S.data,
+    (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
+    (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
+  )
   setdata!(S.data,v,
     (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
     (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
@@ -173,6 +178,7 @@ getdata(data,iPre,iPost)= begin
       [data[pre,post] for pre in iPre, post in iPost]
   _getdata(iseager(iPre),iseager(iPost),data,iPre,iPost)
 end
+viewdata(data,iPre,iPost)= view(data,collect(iPre),collect(iPost))
 setdata!(data,v,iPre,iPost)= begin
   _setdata!(::Val{true},::Val{true},data,v,iPre,iPost)=
       foreach(()-> data[iPre,iPost]=v)

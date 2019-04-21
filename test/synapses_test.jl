@@ -58,6 +58,16 @@ module HTMTest
     synapses[ix,iy]= 3*ones(UInt8, length(ix),length(iy))
     @test (synapses[ix,iy] .== 3)|> all
   end
+
+  # Views
+  begin
+    iy= hypercube((2,2),1,spDims)
+    beforeMod= synapses[x,iy]
+    synapseView= @view synapses[x,iy]
+    @test (synapseView == beforeMod)
+    synapseView.= 5
+    @test (synapseView .== 5)|> all
+  end
 #end
 #test_denseSynapses()
 
