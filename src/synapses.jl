@@ -69,26 +69,29 @@ Base.similar(S::AbstractSynapses, ::Type{elT}, idx::Dims) where {elT}=
     similar(S.data, elT, idx)
 Base.getindex(S::AbstractSynapses, I...)=
     error("AbstractSynapses instances can only be indexed with 2 tuples: pre- & post-synaptic coords")
+Base.@propagate_inbounds \
 Base.getindex(S::AbstractSynapses, linIdx)= S.data[linIdx]
 Base.lastindex(::AbstractSynapses, d)=
     error("'end' can't be used to index AbstractSynapses, because the dimension to which it refers isn't clear")
 
 
 # ## Dense Synapses
+Base.@propagate_inbounds \
 Base.getindex(S::DenseSynapses, linIdxPre::Int,linIdxPost::Int)= S.data[linIdxPre,linIdxPost]
 Base.@propagate_inbounds \
-Base.getindex(S::DenseSynapses{Npre,Npost}, iPre,iPost) where {Npre,Npost}=
+Base.getindex(S::DenseSynapses, iPre,iPost)=
   getdata(S.data,
     (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
     (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
   )
 Base.@propagate_inbounds \
-Base.setindex!(S::DenseSynapses{Npre,Npost}, v,iPre,iPost) where {Npre,Npost}=
 Base.view(S::DenseSynapses, iPre,iPost)=
   viewdata(S.data,
     (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
     (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
   )
+Base.@propagate_inbounds \
+Base.setindex!(S::DenseSynapses, v,iPre,iPost)=
   setdata!(S.data,v,
     (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
     (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
@@ -170,13 +173,32 @@ syn_toindices(d, i::Tuple)= @>> i to_indices(DummyArray(d))
 #syn_toindices(d, i)= @>> i vecTuple_2_tupleVec to_indices(DummyArray(d))
 syn_toindices(d,i)= (syn_toindices(d,idx) for idx in i)
 
+# Preallocates the output array to preserve the shape, even though it would have been much
+#   simpler otherwise!
 getdata(data,iPre,iPost)= begin
-  _getdata(::Val{true},::Val{true},data,iPre,iPost)= data[iPre,iPost]
-  _getdata(::Val{true},::Val{false},data,iPre,iPost)= [data[iPre,post] for post in iPost]
-  _getdata(::Val{false},::Val{true},data,iPre,iPost)= [data[pre,iPost] for pre in iPre]
-  _getdata(::Val{false},::Val{false},data,iPre,iPost)=
-      [data[pre,post] for pre in iPre, post in iPost]
-  _getdata(iseager(iPre),iseager(iPost),data,iPre,iPost)
+  _getdata!(::Val{true},::Val{true},d, data,iPre,iPost)=
+      foreach(()-> d.= data[iPre,iPost])
+  _getdata!(::Val{true},::Val{false},d, data,iPre,iPost)=  foreach(post-> length(iPre)>1 ?
+        d[:,post[1]]= data[iPre,post[2]] : d[post[1]]= data[iPre,post[2]],
+      enumerate(iPost))
+  _getdata!(::Val{false},::Val{true},d, data,iPre,iPost)=  foreach(pre-> length(iPost)>1 ?
+        d[pre[1],:]= data[pre[2],iPost] : d[pre[1]]= data[pre[2],iPost],
+      enumerate(iPre))
+  _getdata!(::Val{false},::Val{false},d, data,iPre,iPost)= foreach(i-> begin
+        (pre,post)= i
+        d[pre[1],post[1]]= data[pre[2],post[2]]
+      end, Iterators.product(enumerate(iPre),enumerate(iPost)))
+
+  # Preallocate the output array
+  d= all(length.((iPost,iPre)).>1) ?
+      Array{SynapsePermanenceQuantization}(undef,length.((iPre,iPost))) :
+      length(iPost)>1 || length(iPre)>1 ?
+        Array{SynapsePermanenceQuantization}(undef,length.((iPre,iPost))|> maximum) :
+        Array{SynapsePermanenceQuantization}(undef,1)
+  _getdata!(iseager(iPre),iseager(iPost),d, data,iPre,iPost)
+  # If the output should be scalar, unwrap from array
+  all(length.((iPost,iPre)).==1) ? d= d[1] : nothing
+  return d
 end
 viewdata(data,iPre,iPost)= view(data,collect(iPre),collect(iPost))
 setdata!(data,v,iPre,iPost)= begin
