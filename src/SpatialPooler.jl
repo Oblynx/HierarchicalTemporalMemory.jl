@@ -38,7 +38,7 @@ function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
   if input_potentialRadius == 0
     input_potentialRadius= max(inputSize)
   end
-
+  θ_permanence_prox= @>> θ_permanence_prox*typemax(SynapsePermanenceQuantization) round(SynapsePermanenceQuantization)
   ## Construction
   SPParams{Nin,Nsp}(inputSize,spSize,input_potentialRadius,sparsity,
            θ_potential_prob_prox,θ_permanence_prox,θ_stimulus_act,
@@ -59,7 +59,7 @@ struct SpatialPooler{Nin,Nsp} #<: Region
             params.input_potentialRadius,params.θ_potential_prob_prox,
             params.θ_permanence_prox),
         InhibitionRadius(params.input_potentialRadius, params.enable_local_inhibit),
-        Boosting()
+        Boosting(ones(prod(params.spSize)))
     )
   end
 end
@@ -140,7 +140,7 @@ end
 """
 function step!(sp::SpatialPooler, z::CellActivity)
   # Activation
-  a= sp_activation(sp.proximalSynapses.synapses,sp.φ,sp.b, sp.params.spSize,sp.params)
+  a= sp_activation(sp.proximalSynapses.synapses,sp.φ,sp.b,z', sp.params.spSize,sp.params)
 
   # Learning
   step!(sp.proximalSynapses,a,sp.params)
@@ -148,20 +148,23 @@ function step!(sp::SpatialPooler, z::CellActivity)
   step!(sp.b,z)
 end
 
-function sp_activation(synapses,φ,b, spSize,params)
+function sp_activation(synapses,φ,b,z, spSize,params)
   # Definitions taken directly from [section 2, doi: 10.3389]
   # W: Connected synapses (size: proximalSynapses)
   W()= synapses .> params.θ_permanence_prox
   # N: neighborhood
-  N(y)= (j for j in hypersphere(y,Int(φ),spSize) if j!=y)
+  N(y)= (j for j in hypersphere(y,Int(φ),spSize) if j.I!=y)
   # o: overlap
-  o(W)= b .* (W*z)
-  # V: overlap values of neighborhood
-  V(y,o)= o[N(y)]
+  o(W)= @> (b' .* (z*W)) reshape(spSize)
+  # V: overlap values of 1 neighborhood
+  V(y,o)= o[N(y.I)|> collect]
+  # Vp: [convenience] collect activation threshold foreach neighborhood
+  Vp(o)= @> [percentile(V(y,o), 100 - params.n_active_perinhibit)
+              for y in hypersphere((1,1),maximum(spSize),spSize)] reshape(spSize)
   # a: activation
-  a(o)= @. (o > percentile(V(o), 100 - params.n_active_perinhibit)) & (o > params.θ_stimulus_act)
+  a(o)= @> ((o .> Vp(o)) .& (o .> params.θ_stimulus_act)) vec
 
-  
+  W()|> o|> a
 end
 
 end

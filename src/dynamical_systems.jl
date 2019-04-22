@@ -16,10 +16,12 @@ Base.promote_rule(::Type{InhibitionRadius}, ::Type{T}) where {T<:Number}= Float3
 Float32(x::InhibitionRadius)= x.φ
 Int(x::InhibitionRadius)= round(Int,x.φ)
 
+function step!(s::InhibitionRadius, z::CellActivity)
+end
 
 # ## Proximal Synapses
 const permT= SynapsePermanenceQuantization
-mutable struct ProximalSynapses
+struct ProximalSynapses
   synapses::DenseSynapses
 
   """
@@ -66,6 +68,13 @@ function step!(s::ProximalSynapses, z::CellActivity, p)
 end
 
 
-# ## Boosting factor
-mutable struct Boosting
+# ## Boosting factors
+struct Boosting <:DenseArray{Float32,1}
+  b::Vector{Float32}
+  Boosting(b)= (b.>0)|> all ? new(b) : error("Boosting factors >0")
+end
+Base.size(b::Boosting)= size(b.b)
+Base.getindex(b::Boosting, i::Int)= b.b[i]
+
+function step!(s::Boosting, z::CellActivity)
 end

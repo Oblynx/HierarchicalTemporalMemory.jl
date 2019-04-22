@@ -1,6 +1,6 @@
 using SparseArrays
-using StaticArrays
 using Lazy
+import StatsBase: percentile
 
 # Type aliases
 const IntSP= Int32
