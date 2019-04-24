@@ -169,6 +169,7 @@ Base.getindex(iter::LinearIndices{N}, i::Vector{NTuple{N,Int}}) where N=
     map(i-> iter[i...], i)
 linIdx(linIdxArray, idx::NTuple{N,Int}) where N= linIdxArray[idx...]::Int
 linIdx(linIdxArray, idx::CartesianIndex)= linIdxArray[idx]::Int
+linIdx(linIdxArray, idx::CellActivity)= linIdxArray[idx]::Vector{Int}
 linIdx(linIdxArray, idx::Vector{NTuple{N,Int}}) where N=
     vec(linIdxArray[idx])::Vector{Int}
 linIdx(linIdxArray, idx::Tuple)= vec(linIdxArray[idx...])::Vector{Int}
@@ -177,8 +178,10 @@ linIdx(linIdxArray, idx)= (linIdx(linIdxArray, i) for i in idx)
 
 syn_toindices(d, i::NTuple{N,Int}) where N= i
 syn_toindices(d, i::CartesianIndex)= i
+syn_toindices(d, i::CellActivity)= i
 syn_toindices(d, i::Vector{NTuple{N,Int}}) where N= i
 syn_toindices(d, i::Tuple)= @>> i to_indices(DummyArray(d))
+syn_toindices(d, i::Colon)= @>> (i,i) to_indices(DummyArray(d))
 # Generic iterable
 #syn_toindices(d, i)= @>> i vecTuple_2_tupleVec to_indices(DummyArray(d))
 syn_toindices(d,i)= (syn_toindices(d,idx) for idx in i)
@@ -228,4 +231,5 @@ end
 # Iterators are Lazy, everything else is eager
 iseager(::Int)= Val(true)
 iseager(::Vector)= Val(true)
+iseager(::CellActivity)= Val(true)
 iseager(::Any)= Val(false)

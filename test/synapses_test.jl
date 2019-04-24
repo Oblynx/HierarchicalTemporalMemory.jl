@@ -14,7 +14,7 @@ function test_denseSynapses()
   seed!(0)
   inputDims= (4,5);
   spDims= (2,3);
-  synapses= DenseSynapses(inputDims, spDims, rand);
+  synapses= DenseSynapses(inputDims, spDims, rand)
 
   # Test access/modify patterns
   begin
@@ -41,6 +41,12 @@ function test_denseSynapses()
   begin
     connectedSyn= synapses .> UIntSP(100)
     @test synapses[connectedSyn] == synapses.data[connectedSyn]
+    preSelect= trues(inputDims);
+    preSelect[rand(1:prod(inputDims),prod(inputDims)÷2)].= false
+    postSelect= trues(spDims);
+    postSelect[rand(1:prod(spDims),prod(spDims)÷2)].= false
+    @test synapses[preSelect,postSelect] == synapses.data[vec(preSelect),vec(postSelect)]
+    @test synapses[:,postSelect] == synapses.data[:,vec(postSelect)]
   end
 
   # Test linear algebra

@@ -14,6 +14,8 @@ struct SPParams{Nin,Nsp}
   θ_permanence_prox::FloatSP
   θ_stimulus_act::UIntSP
   n_active_perinhibit::Int
+  p⁺::SynapsePermanenceQuantization
+  p⁻::SynapsePermanenceQuantization
   enable_local_inhibit::Bool
   enable_learning::Bool
   topologyWraps::Bool
@@ -29,6 +31,8 @@ function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
                   θ_permanence_prox=0.4,
                   θ_stimulus_act=0,
                   n_active_perinhibit=10,
+                  permanence⁺= 0.1,
+                  permanence⁻= 0.02,
                   enable_local_inhibit=true,
                   enable_learning=true,
                   topologyWraps=false
@@ -39,10 +43,12 @@ function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
     input_potentialRadius= max(inputSize)
   end
   θ_permanence_prox= @>> θ_permanence_prox*typemax(SynapsePermanenceQuantization) round(SynapsePermanenceQuantization)
+  p⁺= round(SynapsePermanenceQuantization, permanence⁺*typemax(SynapsePermanenceQuantization))
+  p⁻= round(SynapsePermanenceQuantization, permanence⁻*typemax(SynapsePermanenceQuantization))
   ## Construction
   SPParams{Nin,Nsp}(inputSize,spSize,input_potentialRadius,sparsity,
            θ_potential_prob_prox,θ_permanence_prox,θ_stimulus_act,
-           n_active_perinhibit,
+           n_active_perinhibit,p⁺,p⁻,
            enable_local_inhibit,enable_learning,topologyWraps)
 end
 
@@ -143,7 +149,7 @@ function step!(sp::SpatialPooler, z::CellActivity)
   a= sp_activation(sp.proximalSynapses.synapses,sp.φ,sp.b,z', sp.params.spSize,sp.params)
 
   # Learning
-  step!(sp.proximalSynapses,a,sp.params)
+  step!(sp.proximalSynapses,z,a,sp.params)
   step!(sp.φ,z)
   step!(sp.b,z)
 end
@@ -151,14 +157,16 @@ end
 function sp_activation(synapses,φ,b,z, spSize,params)
   # Definitions taken directly from [section 2, doi: 10.3389]
   # W: Connected synapses (size: proximalSynapses)
+  # TODO (OPTIMIZE): need to cache W and only compare previously-touched synapses!
+  #   Right now, this is the performance bottleneck 
   W()= synapses .> params.θ_permanence_prox
   # o: overlap
   o(W)= @> (b' .* (z*W)) reshape(spSize)
   # Z: k-th larger overlap in neighborhood
-  θ_inhibit(v)= partialsort!(vec(v),params.n_active_perinhibit,rev=true)
+  θ_inhibit(v)= @> v vec partialsort!(params.n_active_perinhibit,rev=true)
   Z(o)= mapwindow(θ_inhibit, o, ntuple(x->2*Int(φ)+1,length(spSize)), border=Fill(0))
   # a: activation
-  a(o)= @> ((o .> Z(o)) .& (o .> params.θ_stimulus_act)) vec
+  a(o)= @> ((o .>= Z(o)) .& (o .> params.θ_stimulus_act))
 
   W()|> o|> a
 end

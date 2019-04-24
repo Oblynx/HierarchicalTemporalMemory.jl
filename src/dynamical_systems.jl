@@ -64,7 +64,13 @@ struct ProximalSynapses
   end
 end
 
-function step!(s::ProximalSynapses, z::CellActivity, p)
+function step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
+  smax= typemax(SynapsePermanenceQuantization)
+  smin= SynapsePermanenceQuantization(1); s0= SynapsePermanenceQuantization(0)
+  @. (s.synapses[:,a]= ifelse(z,
+    ifelse(s.synapses[:,a]>0, min(smax,s.synapses[:,a]+params.p⁺), s0),
+    ifelse(s.synapses[:,a]>0, max(smin,s.synapses[:,a]-params.p⁻), s0)
+  ))
 end
 
 
