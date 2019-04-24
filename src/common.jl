@@ -14,6 +14,7 @@ const VecInt{T<:Integer}= Union{Vector{T}, T}
 export IntSP, UIntSP, FloatSP, SynapsePermanenceQuantization
 
 include("tupleUtils.jl")
+include("iterUtils.jl")
 include("synapses.jl")
 
 const CellActivity= BitArray

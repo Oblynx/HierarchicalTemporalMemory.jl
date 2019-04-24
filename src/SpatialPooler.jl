@@ -153,7 +153,10 @@ function sp_activation(synapses,φ,b,z, spSize,params)
   # W: Connected synapses (size: proximalSynapses)
   W()= synapses .> params.θ_permanence_prox
   # N: neighborhood
-  N(y)= (j for j in hypersphere(y,Int(φ),spSize) if j.I!=y)
+  N(y)= begin
+    hsph= hypersphere(y,Int(φ),spSize)
+    @> (j for j in hsph if j.I!=y) LengthfulIter{eltype(hsph)}(length(hsph)-1)
+  end
   # o: overlap
   o(W)= @> (b' .* (z*W)) reshape(spSize)
   # V: overlap values of 1 neighborhood
