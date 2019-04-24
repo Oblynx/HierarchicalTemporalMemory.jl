@@ -1,5 +1,6 @@
 using SparseArrays
 using Lazy
+using ImageFiltering
 import StatsBase: percentile
 
 # Type aliases

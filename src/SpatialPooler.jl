@@ -13,7 +13,7 @@ struct SPParams{Nin,Nsp}
   θ_potential_prob_prox::FloatSP
   θ_permanence_prox::FloatSP
   θ_stimulus_act::UIntSP
-  n_active_perinhibit::UIntSP
+  n_active_perinhibit::Int
   enable_local_inhibit::Bool
   enable_learning::Bool
   topologyWraps::Bool
@@ -23,7 +23,7 @@ end
 #   Obligatory validity checks should be an inner constructor
 function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
                   spSize::NTuple{Nsp,Int}= (64,64);
-                  input_potentialRadius=16,
+                  input_potentialRadius=12,
                   sparsity=0.2,
                   θ_potential_prob_prox=0.5,
                   θ_permanence_prox=0.4,
@@ -152,20 +152,13 @@ function sp_activation(synapses,φ,b,z, spSize,params)
   # Definitions taken directly from [section 2, doi: 10.3389]
   # W: Connected synapses (size: proximalSynapses)
   W()= synapses .> params.θ_permanence_prox
-  # N: neighborhood
-  N(y)= begin
-    hsph= hypersphere(y,Int(φ),spSize)
-    @> (j for j in hsph if j.I!=y) LengthfulIter{eltype(hsph)}(length(hsph)-1)
-  end
   # o: overlap
   o(W)= @> (b' .* (z*W)) reshape(spSize)
-  # V: overlap values of 1 neighborhood
-  V(y,o)= o[N(y.I)|> collect]
-  # Vp: [convenience] collect activation threshold foreach neighborhood
-  Vp(o)= @> [percentile(V(y,o), 100 - params.n_active_perinhibit)
-              for y in hypersphere((1,1),maximum(spSize),spSize)] reshape(spSize)
+  # Z: k-th larger overlap in neighborhood
+  θ_inhibit(v)= partialsort!(vec(v),params.n_active_perinhibit,rev=true)
+  Z(o)= mapwindow(θ_inhibit, o, ntuple(x->2*Int(φ)+1,length(spSize)), border=Fill(0))
   # a: activation
-  a(o)= @> ((o .> Vp(o)) .& (o .> params.θ_stimulus_act)) vec
+  a(o)= @> ((o .> Z(o)) .& (o .> params.θ_stimulus_act)) vec
 
   W()|> o|> a
 end

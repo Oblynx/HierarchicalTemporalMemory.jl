@@ -13,7 +13,7 @@ includet("../src/SpatialPooler.jl")
 inputDims= (16,16)
 spDims= (64,64)
 sp= SpatialPoolerM.SpatialPooler(SpatialPoolerM.SPParams(
-      inputDims,spDims, input_potentialRadius=2))
+      inputDims,spDims, input_potentialRadius=3))
 
 activity= falses(prod(inputDims))
 activity[rand(1:prod(inputDims),prod(inputDims)÷2)].= true
