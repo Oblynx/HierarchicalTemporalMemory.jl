@@ -157,8 +157,6 @@ end
 function sp_activation(synapses,φ,b,z, spSize,params)
   # Definitions taken directly from [section 2, doi: 10.3389]
   # W: Connected synapses (size: proximalSynapses)
-  # TODO (OPTIMIZE): need to cache W and only compare previously-touched synapses!
-  #   Right now, this is the performance bottleneck
   W()= connected(synapses)
   # o: overlap
   o(W)= @> (b' .* (z*W)) reshape(spSize)

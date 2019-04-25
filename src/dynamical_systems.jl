@@ -69,13 +69,15 @@ end
 
 function step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
   smax= typemax(SynapsePermanenceQuantization)
-  smin= SynapsePermanenceQuantization(1); s0= SynapsePermanenceQuantization(0)
-  @. (s.synapses[:,a]= ifelse(z,
-    ifelse(s.synapses[:,a]>0, min(smax,s.synapses[:,a]+params.p⁺), s0),
-    ifelse(s.synapses[:,a]>0, max(smin,s.synapses[:,a]-params.p⁻), s0)
-  ))
+  smin= SynapsePermanenceQuantization(1)
+  synapses_activeSP= @view s.synapses[:,a]
+  activeConn=   @. synapses_activeSP>0 &  z
+  inactiveConn= @. synapses_activeSP>0 & !z
+  # Learn synapse permanences according to Hebbian learning rule
+  @inbounds @. (synapses_activeSP= activeConn * min(smax,synapses_activeSP+params.p⁺) +
+      inactiveConn * max(smin,synapses_activeSP-params.p⁻))
   # Update cache of connected synapses
-  @. s.connected= s.synapses > params.θ_permanence_prox
+  @inbounds s.connected[:,vec(a)].= synapses_activeSP .> params.θ_permanence_prox
 end
 connected(s::ProximalSynapses)= s.connected
 
