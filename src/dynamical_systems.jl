@@ -23,6 +23,7 @@ end
 const permT= SynapsePermanenceQuantization
 struct ProximalSynapses
   synapses::DenseSynapses
+  connected::BitArray
 
   """
   Make an input x spcols synapse permanence matrix
@@ -62,7 +63,7 @@ struct ProximalSynapses
 
     proximalSynapses= DenseSynapses(inputSize,spSize)
     fillin!(proximalSynapses)
-    new(proximalSynapses)
+    new(proximalSynapses, proximalSynapses .> θ_permanence_prox)
   end
 end
 
@@ -73,8 +74,10 @@ function step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
     ifelse(s.synapses[:,a]>0, min(smax,s.synapses[:,a]+params.p⁺), s0),
     ifelse(s.synapses[:,a]>0, max(smin,s.synapses[:,a]-params.p⁻), s0)
   ))
+  # Update cache of connected synapses
+  @. s.connected= s.synapses > params.θ_permanence_prox
 end
-
+connected(s::ProximalSynapses)= s.connected
 
 # ## Boosting factors
 struct Boosting <:DenseArray{Float32,1}

@@ -27,7 +27,7 @@ function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
                   spSize::NTuple{Nsp,Int}= (64,64);
                   input_potentialRadius=12,
                   sparsity=0.2,
-                  θ_potential_prob_prox=0.5,
+                  θ_potential_prob_prox=0.6,
                   θ_permanence_prox=0.4,
                   θ_stimulus_act=0,
                   n_active_perinhibit=10,
@@ -146,7 +146,7 @@ end
 """
 function step!(sp::SpatialPooler, z::CellActivity)
   # Activation
-  a= sp_activation(sp.proximalSynapses.synapses,sp.φ,sp.b,z', sp.params.spSize,sp.params)
+  a= sp_activation(sp.proximalSynapses,sp.φ,sp.b,z', sp.params.spSize,sp.params)
 
   # Learning
   step!(sp.proximalSynapses,z,a,sp.params)
@@ -158,8 +158,8 @@ function sp_activation(synapses,φ,b,z, spSize,params)
   # Definitions taken directly from [section 2, doi: 10.3389]
   # W: Connected synapses (size: proximalSynapses)
   # TODO (OPTIMIZE): need to cache W and only compare previously-touched synapses!
-  #   Right now, this is the performance bottleneck 
-  W()= synapses .> params.θ_permanence_prox
+  #   Right now, this is the performance bottleneck
+  W()= connected(synapses)
   # o: overlap
   o(W)= @> (b' .* (z*W)) reshape(spSize)
   # Z: k-th larger overlap in neighborhood
