@@ -1,7 +1,7 @@
 using SparseArrays
 using Lazy
 using ImageFiltering
-import StatsBase: percentile
+import Random: rand!
 
 # Type aliases
 const IntSP= Int32

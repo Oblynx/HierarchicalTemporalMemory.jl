@@ -46,11 +46,12 @@ struct ProximalSynapses
     permanence_dense(xᵢ)= begin
       p= rand(permT,length(xᵢ),1)
       effective_θ= floor(permT, (1-θ_potential_prob_prox)*typemax(permT))
-      p[p .> effective_θ].= 0
-      p[p .< effective_θ].= rand(permT, count(p.<effective_θ))
+      p0= p .> effective_θ; pScale= p .< effective_θ
+      fill!(view(p,p0), permT(0))
+      rand!(view(p,pScale), permT)
       return p
     end
-    fill!(proximalSynapses::AbstractSynapses)= begin
+    fillin!(proximalSynapses::AbstractSynapses)= begin
       for yᵢ in spColumns()
         yᵢ= yᵢ.I
         xi= xᵢ(xᶜ(yᵢ))
@@ -60,7 +61,8 @@ struct ProximalSynapses
     end
 
     proximalSynapses= DenseSynapses(inputSize,spSize)
-    new(fill!(proximalSynapses))
+    fillin!(proximalSynapses)
+    new(proximalSynapses)
   end
 end
 
