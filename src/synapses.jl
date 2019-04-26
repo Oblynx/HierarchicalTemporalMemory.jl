@@ -1,6 +1,11 @@
 # ## Synapse type definitions
 # This is low-level code that implements custom Array behavior on synapse permanence arrays
 
+struct DummyArray{N} <: DenseArray{Int,N}
+  dims::NTuple{N,Int}
+end
+Base.size(d::DummyArray)= d.dims
+
 """
   Synapses is basically a wrapper around a (possibly sparse) matrix.
     Connects pre- & post-synaptic entities.
@@ -9,42 +14,44 @@
   - pre: broadcast to all post-
   - post: get all pre
 """
-abstract type AbstractSynapses{Npre,Npost,Nsum} <: AbstractArray{SynapsePermanenceQuantization,Nsum}
+abstract type AbstractSynapses{Npre,Npost} <: AbstractMatrix{SynapsePermanenceQuantization}
 end
-struct SparseSynapses{Npre,Npost,Nsum} <: AbstractSynapses{Npre,Npost,Nsum}
+struct SparseSynapses{Npre,Npost} <: AbstractSynapses{Npre,Npost}
   data::SparseMatrixCSC{SynapsePermanenceQuantization,Int}
   preDims::NTuple{Npre,Int}
   postDims::NTuple{Npost,Int}
   preLinIdx::LinearIndices{Npre}
   postLinIdx::LinearIndices{Npost}
-  function SparseSynapses{Npre,Npost,Nsum}(data,preDims,postDims) where {Npre,Npost,Nsum}
-    Npre+Npost == Nsum || error("Nsum must be Npre+Npost")
+  function SparseSynapses{Npre,Npost}(data,preDims,postDims) where {Npre,Npost}
     preLinIdx= LinearIndices(preDims)
     postLinIdx= LinearIndices(postDims)
-    new{Npre,Npost,Nsum}(data,preDims,postDims,preLinIdx,postLinIdx);
+    new{Npre,Npost}(data,preDims,postDims,preLinIdx,postLinIdx);
   end
 end
-struct DenseSynapses{Npre,Npost,Nsum} <: AbstractSynapses{Npre,Npost,Nsum}
-  data::Array{SynapsePermanenceQuantization, Nsum}
+struct DenseSynapses{Npre,Npost} <: AbstractSynapses{Npre,Npost}
+  data::Array{SynapsePermanenceQuantization, 2}
   preDims::NTuple{Npre,Int}
   postDims::NTuple{Npost,Int}
-  function DenseSynapses{Npre,Npost,Nsum}(data,preDims,postDims) where {Npre,Npost,Nsum}
-    Npre+Npost == Nsum || error("Nsum must be Npre+Npost")
-    new{Npre,Npost,Nsum}(data,preDims,postDims);
+  preLinIdx::LinearIndices{Npre}
+  postLinIdx::LinearIndices{Npost}
+  function DenseSynapses{Npre,Npost}(data,preDims,postDims) where {Npre,Npost}
+    preLinIdx= LinearIndices(preDims)
+    postLinIdx= LinearIndices(postDims)
+    new{Npre,Npost}(data,preDims,postDims,preLinIdx,postLinIdx);
   end
 end
 
-function (DenseSynapses(preDims::NTuple{Npre,IntT}, postDims::NTuple{Npost,IntT}, fInit= zeros)
-          where {Npre,Npost, IntT<:Integer})
-  DenseSynapses{Npre,Npost,Npre+Npost}(
-    fInit(SynapsePermanenceQuantization, preDims..., postDims...),
+function (DenseSynapses(preDims::NTuple{Npre,Int}, postDims::NTuple{Npost,Int}, fInit= zeros)
+          where {Npre,Npost})
+  DenseSynapses{Npre,Npost}(
+    fInit(SynapsePermanenceQuantization, prod(preDims), prod(postDims)),
     preDims,
     postDims
   )
 end
-function (SparseSynapses(preDims::NTuple{Npre,IntT}, postDims::NTuple{Npost,IntT}, fInit= spzeros)
-          where {Npre,Npost, IntT<:Integer})
-  SparseSynapses{Npre,Npost,Npre+Npost}(
+function (SparseSynapses(preDims::NTuple{Npre,Int}, postDims::NTuple{Npost,Int}, fInit= spzeros)
+          where {Npre,Npost})
+  SparseSynapses{Npre,Npost}(
     fInit(SynapsePermanenceQuantization, prod(preDims), prod(postDims)),
     preDims,
     postDims
@@ -54,66 +61,52 @@ end
 
 # ## Common methods
 
-Base.size(S::AbstractSynapses)= (S.preDims..., S.postDims...) #size(S.data)
+Base.size(S::AbstractSynapses)= size(S.data)
 Base.show(S::AbstractSynapses)= show(S.data)
-Base.show(io, mime::MIME"text/plain", S::AbstractSynapses)= show(io,mime,S.data)
+Base.show(io::IO, mime::MIME"text/plain", S::AbstractSynapses)= show(io,mime,S.data)
 Base.display(S::AbstractSynapses)= display(S.data)
 Base.similar(S::AbstractSynapses, ::Type{elT}, idx::Dims) where {elT}=
     similar(S.data, elT, idx)
+Base.getindex(S::AbstractSynapses, I...)=
+    error("AbstractSynapses instances can only be indexed with 2 tuples: pre- & post-synaptic coords")
+Base.setindex!(S::AbstractSynapses,v ,I...)=
+    error("AbstractSynapses instances can only be indexed with 2 tuples: pre- & post-synaptic coords")
+Base.@propagate_inbounds \
+Base.getindex(S::AbstractSynapses, linIdx)= S.data[linIdx]
+Base.@propagate_inbounds \
+Base.setindex!(S::AbstractSynapses,v, linIdx)= (S.data[linIdx]= v)
+Base.lastindex(::AbstractSynapses, d)=
+    error("'end' can't be used to index AbstractSynapses, because the dimension to which it refers isn't clear")
 
 
 # ## Dense Synapses
+# Methods for 2 linear indices
+Base.@propagate_inbounds \
+Base.getindex(S::DenseSynapses, linIdxPre::Int,linIdxPost::Int)= S.data[linIdxPre,linIdxPost]
+Base.@propagate_inbounds \
+Base.view(S::DenseSynapses, linIdxPre::Int,linIdxPost::Int)= view(S.data,linIdxPre,linIdxPost)
+Base.@propagate_inbounds \
+Base.setindex!(S::DenseSynapses,v, linIdxPre::Int,linIdxPost::Int)= (S.data[linIdxPre,linIdxPost]= v)
 
-# Special getindex! for indexing with 2 tuples {pre,post}
+# Methods for 2 Cartesian indices
 Base.@propagate_inbounds \
-function Base.getindex(S::DenseSynapses{Npre,Npost}, Ipre::VecTuple{Npre},
-    Ipost::VecTuple{Npost}) where {Npre,Npost}
-  expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
-  # vec: to return Vector even if i is a single Tuple
-  (iArray(i)::Vector{NTuple{N,Int}} where N)= vec(collect(zip(i...)))
-  I_expanded= expand_i()
-  S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]
-end
-# Ipre, Ipost generic method: assume Ipre, Ipost are iterators
-# TODO figure out how to handle MethodErrors, if they aren't iterators!
+Base.getindex(S::DenseSynapses, iPre,iPost)=
+  getdata(S.data,
+    (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
+    (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
+  )
 Base.@propagate_inbounds \
-function Base.getindex(S::DenseSynapses, Ipre, Ipost)
-  maybeRepeat(i::Tuple)= Iterators.repeated(i)
-  maybeRepeat(i)= (cartIdx.I for cartIdx in i)
-  iterLength(i::Iterators.Repeated)= typemax(Int)
-  iterLength(i)= length(i)
-  idx(iPre,iPost)= Iterators.take(Iterators.product(iPre,iPost),
-                                  min(iterLength(iPre),iterLength(iPost)))
-  [S.data[joinTuples(i...)...] for i in idx(maybeRepeat(Ipre),maybeRepeat(Ipost))]
-end
+Base.view(S::DenseSynapses, iPre,iPost)=
+  viewdata(S.data,
+    (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
+    (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
+  )
 Base.@propagate_inbounds \
-Base.getindex(S::DenseSynapses, I::Vararg{Int,N}) where {N}= S.data[I...]
-
-# Special setindex! for indexing with 2 tuples {pre,post}
-Base.@propagate_inbounds \
-function Base.setindex!(S::DenseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre},
-    Ipost::VecTuple{Npost}) where {Npre,Npost}
-  expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
-  # vec: to return Vector even if i is a single Tuple
-  (iArray(i)::Vector{NTuple{N,Int}} where N)= vec(collect(zip(i...)))
-  I_expanded= expand_i()
-  S.data[cartesianIdx(iArray(I_expanded[1:Npre]), iArray(I_expanded[Npre+1:Npre+Npost]))]= v
-end
-Base.@propagate_inbounds \
-function Base.setindex!(S::DenseSynapses, v, Ipre, Ipost)
-  maybeRepeat(i::Tuple)= Iterators.repeated(i)
-  maybeRepeat(i)= (cartIdx.I for cartIdx in i)
-  iterLength(i::Iterators.Repeated)= typemax(Int)
-  iterLength(i)= length(i)
-  idx(iPre,iPost)= Iterators.take(Iterators.product(iPre,iPost,eachindex(v)),
-                                  min(iterLength(iPre),iterLength(iPost)))
-
-  foreach((i)-> (S.data[joinTuples(i[1:2]...)...]= v[i[3]]),
-          idx(maybeRepeat(Ipre),maybeRepeat(Ipost)))
-end
-Base.@propagate_inbounds \
-Base.setindex!(S::DenseSynapses, v, I::Vararg{Int,N}) where {N}= (S.data[I...]= v)
-
+Base.setindex!(S::DenseSynapses, v,iPre,iPost)=
+  setdata!(S.data,v,
+    (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
+    (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
+  )
 
 # ## Sparse Synapses
 
@@ -170,7 +163,73 @@ end
 
 # When indexing into a LinearIndices with Vectors {i,j}, output Kronecker product {i⊗j}
 Base.@propagate_inbounds \
-Base.getindex(iter::LinearIndices{N}, i::Vararg{Vector{<:Integer},N}) where N=
+Base.getindex(iter::LinearIndices{N}, i::NTuple{N,Vector{Int}}) where N=
     map(i->iter[i...], collect(zip(i...)))
-linIdx(linIdxArray, idx::NTuple{N,<:Integer}) where N= linIdxArray[idx...]
-linIdx(linIdxArray, idx)= vec(linIdxArray[idx...])
+Base.getindex(iter::LinearIndices{N}, i::Vector{NTuple{N,Int}}) where N=
+    map(i-> iter[i...], i)
+linIdx(linIdxArray, idx::NTuple{N,Int}) where N= linIdxArray[idx...]::Int
+linIdx(linIdxArray, idx::CartesianIndex)= linIdxArray[idx]::Int
+linIdx(linIdxArray, idx::CellActivity)= linIdxArray[idx]::Vector{Int}
+linIdx(linIdxArray, idx::Vector{NTuple{N,Int}}) where N=
+    vec(linIdxArray[idx])::Vector{Int}
+linIdx(linIdxArray, idx::Tuple)= vec(linIdxArray[idx...])::Vector{Int}
+linIdx(linIdxArray, idx)= (linIdx(linIdxArray, i) for i in idx)
+
+
+syn_toindices(d, i::NTuple{N,Int}) where N= i
+syn_toindices(d, i::CartesianIndex)= i
+syn_toindices(d, i::CellActivity)= i
+syn_toindices(d, i::Vector{NTuple{N,Int}}) where N= i
+syn_toindices(d, i::Tuple)= @>> i to_indices(DummyArray(d))
+syn_toindices(d, i::Colon)= @>> (i,i) to_indices(DummyArray(d))
+# Generic iterable
+#syn_toindices(d, i)= @>> i vecTuple_2_tupleVec to_indices(DummyArray(d))
+syn_toindices(d,i)= (syn_toindices(d,idx) for idx in i)
+
+# Preallocates the output array to preserve the shape, even though it would have been much
+#   simpler otherwise!
+getdata(data,iPre,iPost)= begin
+  _getdata!(::Val{true},::Val{true},d, data,iPre,iPost)=
+      foreach(()-> d.= data[iPre,iPost])
+  _getdata!(::Val{true},::Val{false},d, data,iPre,iPost)=  foreach(post-> length(iPre)>1 ?
+        d[:,post[1]]= data[iPre,post[2]] : d[post[1]]= data[iPre,post[2]],
+      enumerate(iPost))
+  _getdata!(::Val{false},::Val{true},d, data,iPre,iPost)=  foreach(pre-> length(iPost)>1 ?
+        d[pre[1],:]= data[pre[2],iPost] : d[pre[1]]= data[pre[2],iPost],
+      enumerate(iPre))
+  _getdata!(::Val{false},::Val{false},d, data,iPre,iPost)= foreach(i-> begin
+        (pre,post)= i
+        d[pre[1],post[1]]= data[pre[2],post[2]]
+      end, Iterators.product(enumerate(iPre),enumerate(iPost)))
+
+  # Preallocate the output array
+  d= all(length.((iPost,iPre)).>1) ?
+      Array{SynapsePermanenceQuantization}(undef,length.((iPre,iPost))) :
+      length(iPost)>1 || length(iPre)>1 ?
+        Array{SynapsePermanenceQuantization}(undef,length.((iPre,iPost))|> maximum) :
+        Array{SynapsePermanenceQuantization}(undef,1)
+  _getdata!(iseager(iPre),iseager(iPost),d, data,iPre,iPost)
+  # If the output should be scalar, unwrap from array
+  all(length.((iPost,iPre)).==1) ? d= d[1] : nothing
+  return d
+end
+viewdata(data,iPre,iPost)= view(data,collect(iPre),collect(iPost))
+setdata!(data,v,iPre,iPost)= begin
+  _setdata!(::Val{true},::Val{true},data,v,iPre,iPost)=
+      foreach(()-> data[iPre,iPost]=v)
+  _setdata!(::Val{true},::Val{false},data,v,iPre,iPost)=  foreach(post->
+      data[iPre,post[2]]= length(iPre)>1 ? v[:,post[1]] : v[post[1]], enumerate(iPost))
+  _setdata!(::Val{false},::Val{true},data,v,iPre,iPost)=  foreach(pre->
+      data[pre[2],iPost]= length(iPost)>1 ? v[pre[1],:] : v[pre[1]], enumerate(iPre))
+  _setdata!(::Val{false},::Val{false},data,v,iPre,iPost)= foreach(i-> begin
+      (pre,post)= i
+      data[pre[2],post[2]]= v[pre[1],post[1]]
+    end,  Iterators.product(enumerate(iPre),enumerate(iPost)))
+  _setdata!(iseager(iPre),iseager(iPost),data,v,iPre,iPost)
+end
+
+# Iterators are Lazy, everything else is eager
+iseager(::Int)= Val(true)
+iseager(::Vector)= Val(true)
+iseager(::CellActivity)= Val(true)
+iseager(::Any)= Val(false)
