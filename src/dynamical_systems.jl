@@ -6,11 +6,15 @@ under the influence of other elements of the Spatial Pooler. It provides an init
 """
 mutable struct InhibitionRadius <:AbstractFloat
   φ::Float32
-  InhibitionRadius(x,enable_local_inhibit=true)= enable_local_inhibit ?
-      (x>=0 ? new(x) : error("Inhibition radius >0")) :
+  InhibitionRadius(x,spaceSizeRatio,enable_local_inhibit=true)= enable_local_inhibit ?
+      (x>=0 ? begin
+        inv1(r)= r<1 ? 1/r : r
+        closestToUnity= spaceSizeRatio[argmin(inv1.(spaceSizeRatio))]
+        new(x * closestToUnity)
+      end : error("Inhibition radius >0")) :
       new(Inf)
 end
-#Base.convert(::Type{InhibitionRadius}, x::T) where {T<:Number}= InhibitionRadius(x)
+Base.convert(::Type{InhibitionRadius}, x::InhibitionRadius)= x
 Base.convert(::Type{N}, x::InhibitionRadius) where {N<:Number}= convert(N,x.φ)
 Base.promote_rule(::Type{InhibitionRadius}, ::Type{T}) where {T<:Number}= Float32
 Float32(x::InhibitionRadius)= x.φ
@@ -84,10 +88,20 @@ connected(s::ProximalSynapses)= s.connected
 # ## Boosting factors
 struct Boosting <:DenseArray{Float32,1}
   b::Vector{Float32}
-  Boosting(b)= (b.>0)|> all ? new(b) : error("Boosting factors >0")
+  a_Tmean::Array{Float32}
+  a_Nmean::Array{Float32}
+  Boosting(b,spSize)= (b.>0)|> all ? new(b, zeros(spSize), zeros(spSize)) :
+                              error("Boosting factors >0")
 end
 Base.size(b::Boosting)= size(b.b)
 Base.getindex(b::Boosting, i::Int)= b.b[i]
 
-function step!(s::Boosting, z::CellActivity)
+function step!(s::Boosting, a_t::CellActivity, φ,T,β)
+  α(φ)= 2*floor(Int,φ)+1   # neighborhood side
+  a_Nmean!(aN,aT)= imfilter!(aN,aT, ones(α(φ),α(φ))/α(φ)^2, "symmetric")
+
+  s.a_Tmean.= s.a_Tmean*(T-1)/T .+ a_t/T
+  a_Nmean!(s.a_Nmean, s.a_Tmean)
+  s.b.= boostfun.(s.a_Tmean, s.a_Nmean, β)|> vec
 end
+boostfun(a_Tmean,a_Nmean,β)= ℯ^(-β*(a_Tmean-a_Nmean))

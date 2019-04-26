@@ -9,13 +9,14 @@ struct SPParams{Nin,Nsp}
   inputSize::NTuple{Nin,Int}
   spSize::NTuple{Nsp,Int}
   input_potentialRadius::UIntSP
-  sparsity::FloatSP
+  sp_local_sparsity::FloatSP
   θ_potential_prob_prox::FloatSP
   θ_permanence_prox::FloatSP
   θ_stimulus_act::UIntSP
-  n_active_perinhibit::Int
   p⁺::SynapsePermanenceQuantization
   p⁻::SynapsePermanenceQuantization
+  T_boost::Float32
+  β_boost::Float32
   enable_local_inhibit::Bool
   enable_learning::Bool
   topologyWraps::Bool
@@ -25,14 +26,15 @@ end
 #   Obligatory validity checks should be an inner constructor
 function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
                   spSize::NTuple{Nsp,Int}= (64,64);
-                  input_potentialRadius=12,
-                  sparsity=0.2,
-                  θ_potential_prob_prox=0.6,
-                  θ_permanence_prox=0.4,
-                  θ_stimulus_act=0,
-                  n_active_perinhibit=10,
+                  input_potentialRadius=6,
+                  sp_local_sparsity=0.03,
+                  θ_potential_prob_prox=0.05,
+                  θ_permanence_prox=0.5,
+                  θ_stimulus_act=1,
                   permanence⁺= 0.1,
                   permanence⁻= 0.02,
+                  T_boost= 800,
+                  β_boost= 100,
                   enable_local_inhibit=true,
                   enable_learning=true,
                   topologyWraps=false
@@ -46,9 +48,9 @@ function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
   p⁺= round(SynapsePermanenceQuantization, permanence⁺*typemax(SynapsePermanenceQuantization))
   p⁻= round(SynapsePermanenceQuantization, permanence⁻*typemax(SynapsePermanenceQuantization))
   ## Construction
-  SPParams{Nin,Nsp}(inputSize,spSize,input_potentialRadius,sparsity,
+  SPParams{Nin,Nsp}(inputSize,spSize,input_potentialRadius,sp_local_sparsity,
            θ_potential_prob_prox,θ_permanence_prox,θ_stimulus_act,
-           n_active_perinhibit,p⁺,p⁻,
+           p⁺,p⁻, T_boost,β_boost,
            enable_local_inhibit,enable_learning,topologyWraps)
 end
 
@@ -64,8 +66,9 @@ struct SpatialPooler{Nin,Nsp} #<: Region
         ProximalSynapses(params.inputSize,params.spSize,
             params.input_potentialRadius,params.θ_potential_prob_prox,
             params.θ_permanence_prox),
-        InhibitionRadius(params.input_potentialRadius, params.enable_local_inhibit),
-        Boosting(ones(prod(params.spSize)))
+        InhibitionRadius(params.input_potentialRadius, params.spSize ./ params.inputSize,
+            params.enable_local_inhibit),
+        Boosting(ones(prod(params.spSize)),params.spSize)
     )
   end
 end
@@ -146,23 +149,25 @@ end
 """
 function step!(sp::SpatialPooler, z::CellActivity)
   # Activation
-  a= sp_activation(sp.proximalSynapses,sp.φ,sp.b,z', sp.params.spSize,sp.params)
-
+  a= sp_activation(sp.proximalSynapses,sp.φ.φ,sp.b,z', sp.params.spSize,sp.params)
   # Learning
-  step!(sp.proximalSynapses,z,a,sp.params)
-  step!(sp.φ,z)
-  step!(sp.b,z)
+  step!(sp.proximalSynapses, z,a,sp.params)
+  step!(sp.b, a,sp.φ.φ,sp.params.T_boost,sp.params.β_boost)
+  step!(sp.φ, z)
+  return a
 end
 
 function sp_activation(synapses,φ,b,z, spSize,params)
   # Definitions taken directly from [section 2, doi: 10.3389]
+  α(φ)= 2*floor(Int,φ)+1
+  n_active_perinhibit()= round(Int,params.sp_local_sparsity*(1-params.θ_potential_prob_prox)*α(φ)^2)
   # W: Connected synapses (size: proximalSynapses)
   W()= connected(synapses)
   # o: overlap
   o(W)= @> (b' .* (z*W)) reshape(spSize)
   # Z: k-th larger overlap in neighborhood
-  θ_inhibit(v)= @> v vec partialsort!(params.n_active_perinhibit,rev=true)
-  Z(o)= mapwindow(θ_inhibit, o, ntuple(x->2*Int(φ)+1,length(spSize)), border=Fill(0))
+  θ_inhibit(v)= @> v vec partialsort!(n_active_perinhibit(),rev=true)
+  Z(o)= mapwindow(θ_inhibit, o, ntuple(i->α(φ),length(spSize)), border=Fill(0))
   # a: activation
   a(o)= @> ((o .>= Z(o)) .& (o .> params.θ_stimulus_act))
 
