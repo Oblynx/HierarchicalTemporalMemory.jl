@@ -2,6 +2,7 @@ using SparseArrays
 using Lazy
 using ImageFiltering
 import Random: rand!
+import Statistics: mean
 
 # Type aliases
 const IntSP= Int32

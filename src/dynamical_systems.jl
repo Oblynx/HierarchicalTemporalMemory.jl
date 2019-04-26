@@ -4,15 +4,16 @@ The inhibition radius of a Spatial Pooler's columns is a dynamical system that e
 under the influence of other elements of the Spatial Pooler. It provides an init
 (constructor) and a step! function.
 """
-mutable struct InhibitionRadius <:AbstractFloat
+mutable struct InhibitionRadius{Nin} <:AbstractFloat
   φ::Float32
-  InhibitionRadius(x,spaceSizeRatio,enable_local_inhibit=true)= enable_local_inhibit ?
-      (x>=0 ? begin
-        inv1(r)= r<1 ? 1/r : r
-        closestToUnity= spaceSizeRatio[argmin(inv1.(spaceSizeRatio))]
-        new(x * closestToUnity)
-      end : error("Inhibition radius >0")) :
-      new(Inf)
+  sp_input_ratio::Float32
+  ci::CartesianIndices{Nin}
+  InhibitionRadius(x,inputSize::NTuple{Nin,Int},sp_input_ratio,enable_local_inhibit=true) where Nin=
+      enable_local_inhibit ?
+        (x>=0 ? new{Nin}(x * mean(sp_input_ratio), mean(sp_input_ratio),
+                          CartesianIndices(map(d->1:d, inputSize))) :
+          error("Inhibition radius >0")) :
+        new{0}(Inf)
 end
 Base.convert(::Type{InhibitionRadius}, x::InhibitionRadius)= x
 Base.convert(::Type{N}, x::InhibitionRadius) where {N<:Number}= convert(N,x.φ)
@@ -20,7 +21,20 @@ Base.promote_rule(::Type{InhibitionRadius}, ::Type{T}) where {T<:Number}= Float3
 Float32(x::InhibitionRadius)= x.φ
 Int(x::InhibitionRadius)= round(Int,x.φ)
 
-function step!(s::InhibitionRadius, z::CellActivity)
+step!(s::InhibitionRadius{0}, a,W)= nothing
+function step!(s::InhibitionRadius{Nin}, a::CellActivity, W, params) where Nin
+  # This implementation follows the SP paper description and NUPIC, but seems too complex
+  #   for no reason. Replace with a static inhibition radius instead
+  #receptiveFieldSpan(colinputs)::Float32= begin
+  #  connectedInputCoords= @>> colinputs findall getindex(s.ci)
+  #  maxc= [mapreduce(c->c.I[d], max, connectedInputCoords) for d in 1:Nin]
+  #  minc= [mapreduce(c->c.I[d], min, connectedInputCoords) for d in 1:Nin]
+  #  mean(maxc .- minc .+ 1)
+  #end
+  #mean_receptiveFieldSpan()::Float32= mapslices(receptiveFieldSpan, W, dims=1)|> mean
+  mean_receptiveFieldSpan()= (params.input_potentialRadius*2+0.5)*(1-params.θ_potential_prob_prox)
+  diameter= mean_receptiveFieldSpan()*s.sp_input_ratio
+  s.φ= @> (diameter-1)/2 max(1)
 end
 
 # ## Proximal Synapses
@@ -96,12 +110,14 @@ end
 Base.size(b::Boosting)= size(b.b)
 Base.getindex(b::Boosting, i::Int)= b.b[i]
 
-function step!(s::Boosting, a_t::CellActivity, φ,T,β)
-  α(φ)= 2*floor(Int,φ)+1   # neighborhood side
+function step!(s::Boosting, a_t::CellActivity, φ,T,β,enable)
+  α(φ)= 2*round(Int,φ)+1   # neighborhood side
   a_Nmean!(aN,aT)= imfilter!(aN,aT, ones(α(φ),α(φ))/α(φ)^2, "symmetric")
 
   s.a_Tmean.= s.a_Tmean*(T-1)/T .+ a_t/T
   a_Nmean!(s.a_Nmean, s.a_Tmean)
-  s.b.= boostfun.(s.a_Tmean, s.a_Nmean, β)|> vec
+  if enable
+    s.b.= boostfun.(s.a_Tmean, s.a_Nmean, β)|> vec
+  end
 end
 boostfun(a_Tmean,a_Nmean,β)= ℯ^(-β*(a_Tmean-a_Nmean))
