@@ -13,7 +13,7 @@ mutable struct InhibitionRadius{Nin} <:AbstractFloat
         (x>=0 ? new{Nin}(x * mean(sp_input_ratio), mean(sp_input_ratio),
                           CartesianIndices(map(d->1:d, inputSize))) :
           error("Inhibition radius >0")) :
-        new{0}(Inf)
+        new{0}(maximum(sp_input_ratio.*inputSize)+1)
 end
 Base.convert(::Type{InhibitionRadius}, x::InhibitionRadius)= x
 Base.convert(::Type{N}, x::InhibitionRadius) where {N<:Number}= convert(N,x.φ)
@@ -21,8 +21,8 @@ Base.promote_rule(::Type{InhibitionRadius}, ::Type{T}) where {T<:Number}= Float3
 Float32(x::InhibitionRadius)= x.φ
 Int(x::InhibitionRadius)= round(Int,x.φ)
 
-step!(s::InhibitionRadius{0}, a,W)= nothing
-function step!(s::InhibitionRadius{Nin}, a::CellActivity, W, params) where Nin
+step!(s::InhibitionRadius{0}, a,W,params)= nothing
+function step!(s::InhibitionRadius{Nin}, a, W, params) where Nin
   # This implementation follows the SP paper description and NUPIC, but seems too complex
   #   for no reason. Replace with a static inhibition radius instead
   #receptiveFieldSpan(colinputs)::Float32= begin
@@ -63,11 +63,11 @@ struct ProximalSynapses
     #   so prefer a dense matrix
     #permanence_sparse(xᵢ)= sprand(permT,length(xᵢ),1, 1-θ_potential_prob_prox)
     permanence_dense(xᵢ)= begin
-      p= rand(permT,length(xᵢ),1)
+      p= rand(permT(0):typemax(permT),length(xᵢ),1)
       effective_θ= floor(permT, (1-θ_potential_prob_prox)*typemax(permT))
       p0= p .> effective_θ; pScale= p .< effective_θ
       fill!(view(p,p0), permT(0))
-      rand!(view(p,pScale), permT)
+      rand!(view(p,pScale), permT(0):typemax(permT))
       return p
     end
     fillin!(proximalSynapses::AbstractSynapses)= begin
@@ -85,15 +85,22 @@ struct ProximalSynapses
   end
 end
 
+# Saturated integer arithmetic
+⊕(a::T,b::T) where {T<:Unsigned}= a+b>a ? a+b : typemax(T)
+⊖(a::T,b::T) where {T<:Unsigned}= a-b<a ? a-b : T(0)
+⊕(a::T,b::T) where {T<:Signed}= a+b>a ? a+b : typemax(T)
+⊖(a::T,b::T) where {T<:Signed}= a-b>0 ? a-b : T(0)
+
 function step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
   smax= typemax(SynapsePermanenceQuantization)
   smin= SynapsePermanenceQuantization(1)
   synapses_activeSP= @view s.synapses[:,a]
-  activeConn=   @. synapses_activeSP>0 &  z
-  inactiveConn= @. synapses_activeSP>0 & !z
+  activeConn=   @. (synapses_activeSP>0) &  z
+  inactiveConn= @. (synapses_activeSP>0) & !z
+
   # Learn synapse permanences according to Hebbian learning rule
-  @inbounds @. (synapses_activeSP= activeConn * min(smax,synapses_activeSP+params.p⁺) +
-      inactiveConn * max(smin,synapses_activeSP-params.p⁻))
+  @inbounds @. (synapses_activeSP= activeConn * (synapses_activeSP ⊕ params.p⁺) +
+      inactiveConn * (synapses_activeSP ⊖ params.p⁻))
   # Update cache of connected synapses
   @inbounds s.connected[:,vec(a)].= synapses_activeSP .> params.θ_permanence_prox
 end
@@ -110,12 +117,14 @@ end
 Base.size(b::Boosting)= size(b.b)
 Base.getindex(b::Boosting, i::Int)= b.b[i]
 
-function step!(s::Boosting, a_t::CellActivity, φ,T,β,enable)
+function step!(s::Boosting, a_t::CellActivity, φ,T,β, local_inhibit,enable)
   α(φ)= 2*round(Int,φ)+1   # neighborhood side
-  a_Nmean!(aN,aT)= imfilter!(aN,aT, ones(α(φ),α(φ))/α(φ)^2, "symmetric")
+  a_Nmean!(aN,aT, local_inhibit::Val{true})=
+      imfilter!(aN,aT, ones(α(φ),α(φ))/α(φ)^2, "symmetric")
+  a_Nmean!(aN,aT, local_inhibit::Val{false})= (aN.= mean(aT))
 
   s.a_Tmean.= s.a_Tmean*(T-1)/T .+ a_t/T
-  a_Nmean!(s.a_Nmean, s.a_Tmean)
+  a_Nmean!(s.a_Nmean, s.a_Tmean, Val(local_inhibit))
   if enable
     s.b.= boostfun.(s.a_Tmean, s.a_Nmean, β)|> vec
   end
