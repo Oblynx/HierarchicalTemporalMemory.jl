@@ -8,6 +8,7 @@ seed!(0)
 
 include("../src/common.jl")
 include("../src/SpatialPooler.jl")
+include("../src/encoder.jl")
 
 inputDims= (500,)
 spDims= (500,)
@@ -24,10 +25,13 @@ activity[rand(1:prod(inputDims),prod(inputDims)÷2)].= true
 SpatialPoolerM.step!(sp,activity)
 sp_activity= SpatialPoolerM.sp_activation(sp.proximalSynapses,sp.φ.φ,sp.b,activity', sp.params.spSize,sp.params)
 
+ts= 1:10000
+f= 1 ./ [10 10.3 12.1]
+signal= sum(sin.(2pi*f.*ts), dims=2) .+ 0.5*rand(ts|>length)
+encParams= initenc_simpleArithmetic(signal,encoder_size=inputDims, buckets=16)
 using Plots
-for t= 1:16000
-  activity= falses(prod(inputDims))
-  activity[rand(1:prod(inputDims),prod(inputDims)÷2)].= true
+for t in ts
+  activity,_= encode_simpleArithmetic(signal[t]; encParams...)
   sp_activity= SpatialPoolerM.step!(sp,activity)
 
   t%1000==0 && begin
@@ -38,8 +42,8 @@ for t= 1:16000
     #histogram(sp.b.b)|> display
     #histogram(sp.proximalSynapses.synapses[sp.proximalSynapses.synapses.>0])|> display
 
-    #heatmap(sp_activity)|> display
-    #heatmap(sp.b.a_Tmean)|> display
+    #heatmap(@> sp_activity)|> display
+    #heatmap(@> sp.b.a_Tmean reshape(50,10))|> display
     #heatmap(sp.proximalSynapses.synapses)|> display
   end
 end

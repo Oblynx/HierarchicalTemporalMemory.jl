@@ -86,8 +86,6 @@ struct ProximalSynapses
 end
 
 function step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
-  smax= typemax(SynapsePermanenceQuantization)
-  smin= SynapsePermanenceQuantization(1)
   synapses_activeSP= @view s.synapses[:,a]
   activeConn=   @. (synapses_activeSP>0) &  z
   inactiveConn= @. (synapses_activeSP>0) & !z

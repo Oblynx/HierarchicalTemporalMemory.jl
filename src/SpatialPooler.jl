@@ -43,8 +43,8 @@ function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
                  ) where {Nin,Nsp}
   # Param transformation
   # cover the entire input space, reasonable if no topology
-  if input_potentialRadius == 0
-    input_potentialRadius= max(inputSize)
+  if input_potentialRadius == 0 || !enable_local_inhibit
+    input_potentialRadius= maximum(inputSize)
   end
   θ_permanence_prox= @>> θ_permanence_prox*typemax(SynapsePermanenceQuantization) round(SynapsePermanenceQuantization)
   p⁺= round(SynapsePermanenceQuantization, permanence⁺*typemax(SynapsePermanenceQuantization))
