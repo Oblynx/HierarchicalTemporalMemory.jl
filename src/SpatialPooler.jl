@@ -1,7 +1,7 @@
 module SpatialPoolerM
 
 include("common.jl")
-include("topology.jl")
+include("utils/topology.jl")
 include("dynamical_systems.jl")
 
 # NOTE: Instead of making type aliases, perhaps parametrize IntSP etc?

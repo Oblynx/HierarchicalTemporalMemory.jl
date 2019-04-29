@@ -3,7 +3,7 @@ ENV["JULIA_DEBUG"] = "all"
 logger = ConsoleLogger(stdout, Logging.Debug);
 
 include("../src/common.jl")
-include("../src/topology.jl")
+include("../src/utils/topology.jl")
 
 # Test iteration over a hypercube
 startP= (50,80)

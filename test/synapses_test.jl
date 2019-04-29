@@ -7,7 +7,7 @@ using SparseArrays
 module HTMTest
 using Test
 include("../src/common.jl")
-include("../src/topology.jl")
+include("../src/utils/topology.jl")
 import Random.seed!
 
 function test_denseSynapses()

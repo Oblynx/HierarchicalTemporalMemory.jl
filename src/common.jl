@@ -16,9 +16,10 @@ const VecInt{T<:Integer}= Union{Vector{T}, T}
 
 export IntSP, UIntSP, FloatSP, SynapsePermanenceQuantization
 
-include("tupleUtils.jl")
-include("iterUtils.jl")
-include("synapses.jl")
+include("utils/tuple_utils.jl")
+include("utils/iter_utils.jl")
+include("utils/arithmetic_utils.jl")
+include("utils/synapses.jl")
 
 # Synapses don't belong to regions!
 struct Region
