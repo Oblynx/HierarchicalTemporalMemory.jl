@@ -113,8 +113,9 @@ Base.getindex(b::Boosting, i::Int)= b.b[i]
 
 function step!(s::Boosting, a_t::CellActivity, φ,T,β, local_inhibit,enable)
   α(φ)= 2*round(Int,φ)+1   # neighborhood side
+  mean_kernel(Ndim)= ones(ntuple(i->α(φ),Ndim)) ./ α(φ).^Ndim
   a_Nmean!(aN,aT, local_inhibit::Val{true})=
-      imfilter!(aN,aT, ones(α(φ),α(φ))/α(φ)^2, "symmetric")
+      imfilter!(aN,aT, aN|>size|>length|>mean_kernel, "symmetric")
   a_Nmean!(aN,aT, local_inhibit::Val{false})= (aN.= mean(aT))
 
   s.a_Tmean.= s.a_Tmean*(T-1)/T .+ a_t/T

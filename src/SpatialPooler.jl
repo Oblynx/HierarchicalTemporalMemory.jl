@@ -165,12 +165,12 @@ end
 function sp_activation(synapses,φ,b,z, spSize,params)
   # Definitions taken directly from [section 2, doi: 10.3389]
   α(φ)= 2*round(Int,φ)+1
-  area= params.enable_local_inhibit ? α(φ)^2 : prod(params.spSize)
+  area= params.enable_local_inhibit ? α(φ)^length(params.spSize) : prod(params.spSize)
   n_active_perinhibit= ceil(Int,params.sp_local_sparsity*area)
   # W: Connected synapses (size: proximalSynapses)
   W()= connected(synapses)
   # o: overlap
-  o(W)= @> floor.(Int, b' .* (z*W)) reshape(spSize)
+  o(W)= @> (b' .* (z*W)) reshape(spSize)
   # Z: k-th larger overlap in neighborhood
   # OPTIMIZE: local inhibition is the SP's bottleneck. "mapwindow" is suboptimal;
   #   https://github.com/JuliaImages/Images.jl/issues/751

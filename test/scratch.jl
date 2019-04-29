@@ -9,14 +9,14 @@ seed!(0)
 include("../src/common.jl")
 include("../src/SpatialPooler.jl")
 
-inputDims= (24,24)
-spDims= (32,32)
+inputDims= (500,)
+spDims= (500,)
 sp= SpatialPoolerM.SpatialPooler(SpatialPoolerM.SPParams(
       inputDims,spDims,
-      input_potentialRadius=5,
+      input_potentialRadius=6,
       T_boost=800,
       θ_stimulus_act=1,
-      enable_local_inhibit=true,
+      enable_local_inhibit=false,
       enable_boosting=true))
 
 activity= falses(prod(inputDims))
@@ -39,7 +39,7 @@ for t= 1:16000
     #histogram(sp.proximalSynapses.synapses[sp.proximalSynapses.synapses.>0])|> display
 
     #heatmap(sp_activity)|> display
-    heatmap(sp.b.a_Tmean)|> display
+    #heatmap(sp.b.a_Tmean)|> display
     #heatmap(sp.proximalSynapses.synapses)|> display
   end
 end
