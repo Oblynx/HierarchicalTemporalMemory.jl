@@ -1,5 +1,5 @@
 using Logging
-ENV["JULIA_DEBUG"] = "none"
+ENV["JULIA_DEBUG"] = "all"
 logger = ConsoleLogger(stdout, Logging.Debug);
 using BenchmarkTools
 
@@ -36,7 +36,8 @@ process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
     encOnlyIdx= setdiff(similarEncIdx, similarSpIdx)
     spOnlyIdx= setdiff(similarSpIdx, similarEncIdx)
     encANDspHistory[t]= (encANDsp= intersect(similarEncIdx,similarSpIdx), Nenc= length(similarEncIdx))
-    plot_ts_similarEncSp(data.power_hourly_kw,encOnlyIdx,spOnlyIdx,encANDspHistory,t)
+    t%10==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
+                                    encOnlyIdx,spOnlyIdx,encANDspHistory)
   end
 
 # Define Spatial Pooler
@@ -58,14 +59,14 @@ sp= SpatialPooler(SPParams(
 data,tN= read_gympower()
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
                  encoder_size=inputDims[1], w=(21,27,27))
-using Plots
+using Plots; gr()
 encHistory= falses(map(sum,inputDims)|>prod,tN)
 spHistory= falses(spDims|>prod,tN)
 encANDspHistory= Vector{NamedTuple{(:encANDsp,:Nenc),Tuple{Vector{Int},Int}}}(undef,tN)
 process_data!(encHistory,spHistory,encANDspHistory, tN,data,encParams,sp)
 total_overlap= [1; map(x->length(x.encANDsp), encANDspHistory[2:end]) ./
                    map(x->x.Nenc, encANDspHistory[2:end])]
-plot(total_overlap)|>display
+#plot(total_overlap)|>display
 @printf("Mean SP performance: [%.2f,%.2f]\n",
         mean(total_overlap[170:337]),mean(total_overlap[338:end]))
 end #module
