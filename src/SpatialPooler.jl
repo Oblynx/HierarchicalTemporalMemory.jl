@@ -1,5 +1,3 @@
-module SpatialPoolerM
-
 include("common.jl")
 include("utils/topology.jl")
 include("dynamical_systems.jl")
@@ -28,7 +26,7 @@ end
 function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
                   spSize::NTuple{Nsp,Int}= (64,64);
                   input_potentialRadius=6,
-                  sp_local_sparsity=0.03,
+                  sp_local_sparsity=0.022,
                   θ_potential_prob_prox=0.10,
                   θ_permanence_prox=0.5,
                   θ_stimulus_act=1,
@@ -182,6 +180,4 @@ function sp_activation(synapses,φ,b,z, spSize,params)
   a(o)= (o .>= Z(o)) .& (o .> params.θ_stimulus_act)
 
   W()|> o|> a
-end
-
 end

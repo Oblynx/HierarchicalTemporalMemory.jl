@@ -15,10 +15,9 @@ end
 
 
 # ## Encoder parameter generators
-
 function initenc_simpleArithmetic(ts; encoder_size,buckets=0,w=0)
   in_max= maximum(ts); in_min= minimum(ts)
-  range= in_max - in_min +10*eps(in_max)
+  range= in_max - in_min +10*eps(in_max|>Float32)
   if buckets>0
     w= prod(encoder_size) - buckets +1
   elseif w>0
@@ -29,7 +28,7 @@ function initenc_simpleArithmetic(ts; encoder_size,buckets=0,w=0)
   (in_max=in_max, in_min=in_min, range=range, buckets=buckets, w=w, encoder_size=encoder_size)
 end
 initenc_powerDay(power,time,wkend; encoder_size, w)= (
-  power_p= initenc_simpleArithmetic(power,encoder_size[1],w[1]),
-  time_p=  initenc_simpleArithmetic(time,encoder_size[2],w[2]),
-  wkend_p= initenc_simpleArithmetic(wkend,encoder_size[3],w[3])
+  power_p= initenc_simpleArithmetic(power,encoder_size=encoder_size[1], w=w[1]),
+  time_p=  initenc_simpleArithmetic(time,encoder_size=encoder_size[2], w=w[2]),
+  wkend_p= initenc_simpleArithmetic(wkend,encoder_size=encoder_size[3], w=w[3])
 )
