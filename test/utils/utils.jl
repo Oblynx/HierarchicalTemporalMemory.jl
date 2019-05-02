@@ -35,20 +35,21 @@ plot_ts_similarEncSp(t,ts,encOnly,spOnly,encANDspHistory)=
     end
 function _plot_ts_similarEncSP(t,ts,encOnly,spOnly,encANDspHistory)
   graph_ts()= begin
-    graph_ts= plot(ts, label="power", dpi=192, ylims=(minimum(ts),maximum(ts)))
+    graph_ts= plot(ts, label="power", dpi=192, ylims=(0.9minimum(ts),1.05maximum(ts)),
+              xlims=(1,1.3length(ts)))
     scatter!(graph_ts, encOnly, ts[encOnly], label="encoding only")
     scatter!(graph_ts, spOnly, ts[spOnly], label="SP only")
     scatter!(graph_ts, encANDspHistory[t][1], ts[encANDspHistory[t][1]],
-              label="overlapping encoding & SP", legendfontsize=6)
+              label="overlapping", legendfontsize=6)
     vline!(graph_ts,[t], label="")
-    title!(graph_ts, "Spatial Pooler mapping property evaluation", titlefont=font(12))
+    title!(graph_ts, "Spatial Pooler mapping property evaluation", titlefont=font(10))
     return graph_ts
   end
   graph_ovp(overlapFraction)= begin
     graph_ovp= plot(1:t,overlapFraction*100, label="", linestyle=:dash, shape=:circle,
         msize=3, mcolor=:red, mscolor=:green, dpi=192,
-        ylabel="overlap%",ylims=(0,100),xlims=(1,length(ts)))
-    title!(graph_ovp, "Percentage of overlapping encoder and SP SDRs", titlefont=font(12))
+        ylabel="overlap%",ylims=(-1,102),xlims=(1,1.3length(ts)))
+    title!(graph_ovp, "Percentage of overlapping encoder and SP SDRs", titlefont=font(10))
     return graph_ovp
   end
   overlapFraction= map(x->length(x.encANDsp)/x.Nenc, encANDspHistory[1:t])

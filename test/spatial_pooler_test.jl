@@ -7,6 +7,7 @@ module HTMt
 using BenchmarkTools
 using CSV
 using Printf
+using Plots; gr()
 import Random.seed!
 seed!(0)
 
@@ -59,7 +60,6 @@ sp= SpatialPooler(SPParams(
 data,tN= read_gympower()
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
                  encoder_size=inputDims[1], w=(21,27,27))
-using Plots; gr()
 encHistory= falses(map(sum,inputDims)|>prod,tN)
 spHistory= falses(spDims|>prod,tN)
 encANDspHistory= Vector{NamedTuple{(:encANDsp,:Nenc),Tuple{Vector{Int},Int}}}(undef,tN)
