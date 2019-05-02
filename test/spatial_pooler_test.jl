@@ -7,6 +7,7 @@ module HTMt
 using BenchmarkTools
 using CSV
 using Printf
+using Makie
 import Random.seed!
 seed!(0)
 
@@ -26,8 +27,10 @@ display_evaluation(t,sp,sp_activity,spDims)= begin
   #heatmap(@> sp.b.a_Tmean reshape(64,32))|> display
   #heatmap(sp.proximalSynapses.synapses)|> display
 end
-process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
-  for t in 1:tN
+function process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)
+  AbstractPlotting.inline!(true)
+  scene= Scene()
+  for t in 1:tN÷10
     z,a= _process_sp(t,tN,data,encParams,sp,display_evaluation)
     encHistory[:,t]= z; spHistory[:,t]= a
     # when were the most similar SDRs to z,a in history? These indices correspond to times
@@ -37,8 +40,9 @@ process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
     spOnlyIdx= setdiff(similarSpIdx, similarEncIdx)
     encANDspHistory[t]= (encANDsp= intersect(similarEncIdx,similarSpIdx), Nenc= length(similarEncIdx))
     t%10==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
-                                    encOnlyIdx,spOnlyIdx,encANDspHistory)
+                                    encOnlyIdx,spOnlyIdx,encANDspHistory,scene)
   end
+end
 
 # Define Spatial Pooler
 inputDims= ((16*25,5*25,3*25),)
@@ -59,7 +63,7 @@ sp= SpatialPooler(SPParams(
 data,tN= read_gympower()
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
                  encoder_size=inputDims[1], w=(21,27,27))
-using Plots; gr()
+
 encHistory= falses(map(sum,inputDims)|>prod,tN)
 spHistory= falses(spDims|>prod,tN)
 encANDspHistory= Vector{NamedTuple{(:encANDsp,:Nenc),Tuple{Vector{Int},Int}}}(undef,tN)
