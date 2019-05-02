@@ -30,7 +30,7 @@ end
 function process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)
   AbstractPlotting.inline!(true)
   scene= Scene()
-  for t in 1:tN÷10
+  for t in 1:tN÷4
     z,a= _process_sp(t,tN,data,encParams,sp,display_evaluation)
     encHistory[:,t]= z; spHistory[:,t]= a
     # when were the most similar SDRs to z,a in history? These indices correspond to times
@@ -39,7 +39,7 @@ function process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp
     encOnlyIdx= setdiff(similarEncIdx, similarSpIdx)
     spOnlyIdx= setdiff(similarSpIdx, similarEncIdx)
     encANDspHistory[t]= (encANDsp= intersect(similarEncIdx,similarSpIdx), Nenc= length(similarEncIdx))
-    t%10==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
+    t%80==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
                                     encOnlyIdx,spOnlyIdx,encANDspHistory,scene)
   end
 end

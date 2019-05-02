@@ -34,23 +34,31 @@ plot_ts_similarEncSp(t,ts,encOnly,spOnly,encANDspHistory,scene::Scene=Scene())=
     t>1 ? _plot_ts_similarEncSP(scene,t,ts,encOnly,spOnly,encANDspHistory) : nothing
 function _plot_ts_similarEncSP(scene,t,ts,encOnly,spOnly,encANDspHistory)
   graph_ts()= begin
-    graph_ts= lines(ts, label="power", dpi=192, ylims=(minimum(ts),maximum(ts)))
-    scatter!(graph_ts, encOnly, ts[encOnly], label="encoding only")
-    scatter!(graph_ts, spOnly, ts[spOnly], label="SP only")
-    scatter!(graph_ts, encANDspHistory[t][1], ts[encANDspHistory[t][1]],
-              label="overlapping encoding & SP", legendfontsize=6)
-    lines!(graph_ts,[t,t],[minimum(ts),maximum(ts)], label="")
+    axislims= FRect(1, 0.9minimum(ts), length(ts), 1.05maximum(ts)-0.9minimum(ts))
+    graph_ts= lines(ts, color=:blue, limits=axislims)
+    scatter!(graph_ts, encOnly, ts[encOnly], markersize=18, alpha=0.8, color=:red)
+    scatter!(graph_ts, spOnly, ts[spOnly], markersize=18, alpha=0.8, color=:yellow)
+    scatter!(graph_ts, encANDspHistory[t][1], ts[encANDspHistory[t][1]], markersize=18,
+              alpha=0.8, color=:green)
+    lines!(graph_ts,[t,t],[minimum(ts),maximum(ts)], limits=axislims)
+    lgd= legend([graph_ts[2],graph_ts[3],graph_ts[4],graph_ts[5]],
+                ["power", "encoding only", "SP only", "overlapping"],
+                camera=campixel!, raw=true)
+    graph_ts= vbox(graph_ts,lgd)
     return graph_ts
   end
   graph_ovp(overlapFraction)= begin
-    graph_ovp= lines(1:t,overlapFraction*100, label="", linestyle=:dash, shape=:circle,
-        msize=2, mcolor=:red, mscolor=:green, dpi=192,
-        ylabel="overlap%",ylims=(0,100),xlims=(1,length(ts)))
+    axislims= FRect(1,0,length(ts),101)
+    graph_ovp= lines(1:t,overlapFraction*100, linestyle=:dash, color=:blue, limits=axislims)
+    scatter!(graph_ovp, 1:t,overlapFraction*100, markersize=8, alpha=0.2, transparency=true,
+             strokewidth=3.0, color=:red, limits=axislims)
+    #ylabel="overlap%",ylims=(0,100),xlims=(1,length(ts)))
     return graph_ovp
   end
   overlapFraction= map(x->length(x.encANDsp)/x.Nenc, encANDspHistory[1:t])
   overlapFraction[isnan.(overlapFraction)].= 1.0
   #t1="Spatial Pooler mapping property evaluation"
   #t2="Percentage of overlapping encoder and SP SDRs"
-  scene= hbox(graph_ts(), graph_ovp(overlapFraction))|> display
+  scene= hbox(graph_ovp(overlapFraction), graph_ts())|> display
+  scene
 end
