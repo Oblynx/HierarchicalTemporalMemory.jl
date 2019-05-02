@@ -10,7 +10,7 @@ _process_sp(t,tN,signal,encParams,sp,display_evaluation=identity)= begin
 end
 identity(a...)= a
 read_gympower()= begin
-  data= CSV.read("test/test_data/gym_power_benchmark.csv")
+  data= CSV.read("test/test_data/gym_power_benchmark.csv", allowmissing=:auto)
   ((power_hourly_kw= data.power_hourly_kw,
     hour= data.hour,
     is_weekend= data.is_weekend
@@ -21,7 +21,11 @@ Find the top-k% most similar SDRs to the last one from the entire history.
 """
 top_similar_sdr(sdrHist,k)= begin
   k= size(sdrHist,2)==1 ? 0 : ceil(Int,k/100*size(sdrHist,2))
-  topIdx= @> (sdrHist[:,end] .& sdrHist[:,1:end-1]) sum(dims=1) vec partialsortperm(1:k,rev=true)
+  # Shame: I can't find ANY high-level construct to even approach the efficiency of this!
+  overlap= zeros(Int32,size(sdrHist,2)-1)
+  for t in 1:length(overlap) for i in 1:size(sdrHist,1)
+      overlap[t]+= sdrHist[i,end] & sdrHist[i,t] end end
+  topIdx= @> overlap partialsortperm(1:k,rev=true)
   (sdrHist[:,topIdx], topIdx)
 end
 
