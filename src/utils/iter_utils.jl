@@ -18,3 +18,10 @@ function _collect(itr::Base.Generator,sz::Int, elT)
     Base.collect_to_with_first!(_array_for(typeof(v1), itr.iter), v1, itr, st)
 end
 _collect(itr,n,elT)= Base.collect(itr)
+
+sparse_map!(s::SparseMatrixCSC, a,f!,args...)=
+    for c in findall(a)
+        ci= nzrange(s,c)
+        input_i= rowvals(s)[ci]
+        f!(s,ci,input_i,args...)
+    end

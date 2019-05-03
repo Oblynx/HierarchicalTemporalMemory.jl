@@ -22,13 +22,13 @@ display_evaluation(t,sp,sp_activity,spDims)= begin
   sparsity|> display
 
   #histogram(sp.b.b)|> display
-  #histogram(sp.proximalSynapses.synapses[sp.proximalSynapses.synapses.>0])|> display
+  #histogram(sp.proximalSynapses.synapses[sp.proximalSynapses.synapses.>0]|>Vector)|> display
   #heatmap(@> sp_activity reshape(64,32))|> display
   #heatmap(@> sp.b.a_Tmean reshape(64,32))|> display
   #heatmap(sp.proximalSynapses.synapses)|> display
 end
 process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
-  for t in 1:tN
+  for t in 1:tN÷3
     z,a= _process_sp(t,tN,data,encParams,sp,display_evaluation)
     encHistory[:,t]= z; spHistory[:,t]= a
     # when were the most similar SDRs to z,a in history? These indices correspond to times
@@ -44,16 +44,18 @@ process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
 # Define Spatial Pooler
 inputDims= ((16*25,5*25,3*25),)
 spDims= (2048,)
+#inputDims= (8,)
+#spDims= (12,)
 sp= SpatialPooler(SPParams(
       map(sum,inputDims),spDims,
       input_potentialRadius=6,
       sp_local_sparsity=0.02,
-      θ_potential_prob_prox=0.15,
+      θ_potential_prob_prox=0.9,
       θ_stimulus_act=1,
-      permanence⁺= 0.05,
-      permanence⁻= 0.008,
+      permanence⁺= 0.09,
+      permanence⁻= 0.009,
       β_boost=6,
-      T_boost=400,
+      T_boost=500,
       enable_local_inhibit=false,
       enable_boosting=true))
 # Define input data
@@ -64,9 +66,9 @@ encHistory= falses(map(sum,inputDims)|>prod,tN)
 spHistory= falses(spDims|>prod,tN)
 encANDspHistory= Vector{NamedTuple{(:encANDsp,:Nenc),Tuple{Vector{Int},Int}}}(undef,tN)
 process_data!(encHistory,spHistory,encANDspHistory, tN,data,encParams,sp)
-total_overlap= [1; map(x->length(x.encANDsp), encANDspHistory[2:end]) ./
-                   map(x->x.Nenc, encANDspHistory[2:end])]
+total_overlap= [1; map(x->length(x.encANDsp), encANDspHistory[2:end÷4]) ./
+                   map(x->x.Nenc, encANDspHistory[2:end÷4])]
 #plot(total_overlap)|>display
 @printf("Mean SP performance: [%.2f,%.2f]\n",
-        mean(total_overlap[170:337]),mean(total_overlap[338:end]))
+        mean(total_overlap[17:34]),mean(total_overlap[34:end÷4]))
 end #module

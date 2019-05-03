@@ -40,7 +40,7 @@ end
 # ## Proximal Synapses
 const permT= SynapsePermanenceQuantization
 struct ProximalSynapses
-  synapses::DenseSynapses
+  synapses::AbstractSynapses
   connected::BitArray
 
   """
@@ -61,7 +61,7 @@ struct ProximalSynapses
 
     # Draw permanences from uniform distribution. Connections aren't very sparse (40%),
     #   so prefer a dense matrix
-    #permanence_sparse(xᵢ)= sprand(permT,length(xᵢ),1, 1-θ_potential_prob_prox)
+    permanence_sparse(xᵢ)= sprand(permT,length(xᵢ),1, 1-θ_potential_prob_prox)
     permanence_dense(xᵢ)= begin
       p= rand(permT(0):typemax(permT),length(xᵢ),1)
       effective_θ= floor(permT, (1-θ_potential_prob_prox)*typemax(permT))
@@ -74,18 +74,18 @@ struct ProximalSynapses
       for yᵢ in spColumns()
         yᵢ= yᵢ.I
         xi= xᵢ(xᶜ(yᵢ))
-        proximalSynapses[xi, yᵢ]= permanence_dense(xi)
+        proximalSynapses[xi, yᵢ]= permanence_sparse(xi)
       end
       return proximalSynapses
     end
 
-    proximalSynapses= DenseSynapses(inputSize,spSize)
+    proximalSynapses= SparseSynapses(inputSize,spSize)
     fillin!(proximalSynapses)
     new(proximalSynapses, proximalSynapses .> θ_permanence_prox)
   end
 end
 
-function step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
+function adapt!(::DenseSynapses,s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
   synapses_activeSP= @view s.synapses[:,a]
   activeConn=   @. (synapses_activeSP>0) &  z
   inactiveConn= @. (synapses_activeSP>0) & !z
@@ -96,6 +96,19 @@ function step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
   # Update cache of connected synapses
   @inbounds s.connected[:,vec(a)].= synapses_activeSP .> params.θ_permanence_prox
 end
+function adapt!(::SparseSynapses,s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
+  # Learn synapse permanences according to Hebbian learning rule
+  @inline adapt_syn!(s,ci,input_i,z,p⁺,p⁻)= begin
+    @inbounds synapses= @view nonzeros(s)[ci]
+    @inbounds z_i= z[input_i]
+    @inbounds synapses.= z_i .* (synapses .⊕ p⁺) .+
+                       .!z_i .* (synapses .⊖ p⁻)
+  end
+  sparse_map!(s.synapses.data,a,adapt_syn!,z,params.p⁺,params.p⁻)
+  # Update cache of connected synapses
+  @inbounds @views s.connected[:,vec(a)].= s.synapses.data[:,a] .> params.θ_permanence_prox
+end
+step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)= adapt!(s.synapses, s,z,a,params)
 connected(s::ProximalSynapses)= s.connected
 
 # ## Boosting factors
