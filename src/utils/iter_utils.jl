@@ -31,9 +31,8 @@ Base.iterate(B::Truesof, i::Int=1)= begin
 end
 Base.collect(B::Truesof)= collect(B.b)
 
-sparse_foreach(s::SparseMatrixCSC, a,f,args...)=
-  foreach(Truesof(a)) do c
+sparse_foreach(f, s::SparseMatrixCSC,columnIdx)=
+  foreach(Truesof(columnIdx)) do c
     ci= nzrange(s,c)
-    input_i= rowvals(s)[ci]
-    f(s,ci,input_i,args...)
+    f(s,ci,rowvals(s)[ci])
   end
