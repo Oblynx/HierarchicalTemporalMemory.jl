@@ -104,7 +104,7 @@ function adapt!(::SparseSynapses,s::ProximalSynapses, z::CellActivity, a::CellAc
     @inbounds synapses.= z_i .* (synapses .⊕ p⁺) .+
                        .!z_i .* (synapses .⊖ p⁻)
   end
-  sparse_map!(s.synapses.data,a,adapt_syn!,z,params.p⁺,params.p⁻)
+  sparse_foreach(s.synapses.data,a,adapt_syn!,z,params.p⁺,params.p⁻)
   # Update cache of connected synapses
   @inbounds @views s.connected[:,vec(a)].= s.synapses.data[:,a] .> params.θ_permanence_prox
 end
