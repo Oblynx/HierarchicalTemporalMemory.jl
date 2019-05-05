@@ -28,7 +28,7 @@ display_evaluation(t,sp,sp_activity,spDims)= begin
   #heatmap(sp.proximalSynapses.synapses)|> display
 end
 process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
-  for t in 1:tN÷3
+  for t in 1:tN
     z,a= _process_sp(t,tN,data,encParams,sp,display_evaluation)
     encHistory[:,t]= z; spHistory[:,t]= a
     # when were the most similar SDRs to z,a in history? These indices correspond to times
@@ -37,7 +37,7 @@ process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
     encOnlyIdx= setdiff(similarEncIdx, similarSpIdx)
     spOnlyIdx= setdiff(similarSpIdx, similarEncIdx)
     encANDspHistory[t]= (encANDsp= intersect(similarEncIdx,similarSpIdx), Nenc= length(similarEncIdx))
-    t%10==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
+    t%04==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
                                     encOnlyIdx,spOnlyIdx,encANDspHistory)
   end
 
@@ -48,9 +48,9 @@ spDims= (2048,)
 #spDims= (12,)
 sp= SpatialPooler(SPParams(
       map(sum,inputDims),spDims,
-      input_potentialRadius=6,
+      input_potentialRadius=35,
       sp_local_sparsity=0.02,
-      θ_potential_prob_prox=0.9,
+      θ_potential_prob_prox=0.931,
       θ_stimulus_act=1,
       permanence⁺= 0.09,
       permanence⁻= 0.009,
@@ -66,9 +66,9 @@ encHistory= falses(map(sum,inputDims)|>prod,tN)
 spHistory= falses(spDims|>prod,tN)
 encANDspHistory= Vector{NamedTuple{(:encANDsp,:Nenc),Tuple{Vector{Int},Int}}}(undef,tN)
 process_data!(encHistory,spHistory,encANDspHistory, tN,data,encParams,sp)
-total_overlap= [1; map(x->length(x.encANDsp), encANDspHistory[2:end÷4]) ./
-                   map(x->x.Nenc, encANDspHistory[2:end÷4])]
+total_overlap= [1; map(x->length(x.encANDsp), encANDspHistory[2:end]) ./
+                   map(x->x.Nenc, encANDspHistory[2:end])]
 #plot(total_overlap)|>display
 @printf("Mean SP performance: [%.2f,%.2f]\n",
-        mean(total_overlap[17:34]),mean(total_overlap[34:end÷4]))
+        mean(total_overlap[170:337]),mean(total_overlap[338:end]))
 end #module
