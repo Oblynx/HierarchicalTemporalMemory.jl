@@ -39,8 +39,8 @@ end
 
 # ## Proximal Synapses
 const permT= SynapsePermanenceQuantization
-struct ProximalSynapses
-  synapses::AbstractSynapses
+struct ProximalSynapses{SynapseT<:AbstractSynapses}
+  synapses::SynapseT
   connected::BitArray
 
   """
@@ -52,8 +52,8 @@ struct ProximalSynapses
     - If < 1-θ_potential_prob_prox
      - Init perm: rescale Z from [0..1-θ] -> [0..1]: Z/(1-θ)
   """
-  function ProximalSynapses(inputSize,spSize,input_potentialRadius,
-        θ_potential_prob_prox,θ_permanence_prox)
+  function ProximalSynapses{SynapseT}(inputSize,spSize,input_potentialRadius,
+        θ_potential_prob_prox,θ_permanence_prox) where SynapseT
     spColumns()= CartesianIndices(spSize)
     # Map column coordinates to their center in the input space. Column coords FROM 1 !!!
     xᶜ(yᵢ)= floor.(UIntSP, (yᵢ.-1) .* (inputSize./spSize)) .+1
@@ -61,8 +61,8 @@ struct ProximalSynapses
 
     # Draw permanences from uniform distribution. Connections aren't very sparse (40%),
     #   so prefer a dense matrix
-    permanence_sparse(xᵢ)= sprand(permT,length(xᵢ),1, 1-θ_potential_prob_prox)
-    permanence_dense(xᵢ)= begin
+    permanences(::Type{SparseSynapses},xᵢ)= sprand(permT,length(xᵢ),1, 1-θ_potential_prob_prox)
+    permanences(::Type{DenseSynapses}, xᵢ)= begin
       p= rand(permT(0):typemax(permT),length(xᵢ),1)
       effective_θ= floor(permT, (1-θ_potential_prob_prox)*typemax(permT))
       p0= p .> effective_θ; pScale= p .< effective_θ
@@ -70,16 +70,16 @@ struct ProximalSynapses
       rand!(view(p,pScale), permT(0):typemax(permT))
       return p
     end
-    fillin!(proximalSynapses::AbstractSynapses)= begin
+    fillin!(proximalSynapses)= begin
       for yᵢ in spColumns()
         yᵢ= yᵢ.I
         xi= xᵢ(xᶜ(yᵢ))
-        proximalSynapses[xi, yᵢ]= permanence_sparse(xi)
+        proximalSynapses[xi, yᵢ]= permanences(SynapseT,xi)
       end
       return proximalSynapses
     end
 
-    proximalSynapses= SparseSynapses(inputSize,spSize)
+    proximalSynapses= SynapseT(inputSize,spSize)
     fillin!(proximalSynapses)
     new(proximalSynapses, proximalSynapses .> θ_permanence_prox)
   end
@@ -122,7 +122,6 @@ Base.size(b::Boosting)= size(b.b)
 Base.getindex(b::Boosting, i::Int)= b.b[i]
 
 function step!(s::Boosting, a_t::CellActivity, φ,T,β, local_inhibit,enable)
-  α(φ)= 2*round(Int,φ)+1   # neighborhood side
   mean_kernel(Ndim)= ones(ntuple(i->α(φ),Ndim)) ./ α(φ).^Ndim
   a_Nmean!(aN,aT, local_inhibit::Val{true})=
       imfilter!(aN,aT, aN|>size|>length|>mean_kernel, "symmetric")

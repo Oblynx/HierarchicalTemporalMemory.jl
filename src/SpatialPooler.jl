@@ -62,8 +62,11 @@ struct SpatialPooler{Nin,Nsp} #<: Region
 
   # Nin, Nsp: number of input and spatial pooler dimensions
   function SpatialPooler(params::SPParams{Nin,Nsp}= SPParams()) where {Nin,Nsp}
+    synapseSparsity= (1-params.θ_potential_prob_prox)*(params.enable_local_inhibit ?
+                        (α(params.input_potentialRadius)^Nin)/prod(params.inputSize) : 1)
+    synapseType= synapseSparsity<0.07 ? SparseSynapses : DenseSynapses
     new{Nin,Nsp}(params,
-        ProximalSynapses(params.inputSize,params.spSize,
+        ProximalSynapses{synapseType}(params.inputSize,params.spSize,
             params.input_potentialRadius,params.θ_potential_prob_prox,
             params.θ_permanence_prox),
         InhibitionRadius(params.input_potentialRadius,params.inputSize,
@@ -162,7 +165,6 @@ end
 
 function sp_activation(synapses,φ,b,z, spSize,params)
   # Definitions taken directly from [section 2, doi: 10.3389]
-  α(φ)= 2*round(Int,φ)+1
   area= params.enable_local_inhibit ? α(φ)^length(params.spSize) : prod(params.spSize)
   n_active_perinhibit= ceil(Int,params.sp_local_sparsity*area)
   # W: Connected synapses (size: proximalSynapses)
