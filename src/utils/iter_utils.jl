@@ -36,3 +36,8 @@ sparse_foreach(f, s::SparseMatrixCSC,columnIdx)=
     ci= nzrange(s,c)
     f(s,ci,rowvals(s)[ci])
   end
+sparse_map(f, s::SparseMatrixCSC,columnIdx)=
+  map(Truesof(columnIdx)) do c
+    ci= nzrange(s,c)
+    f(s,ci,rowvals(s)[ci])
+  end

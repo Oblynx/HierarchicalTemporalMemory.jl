@@ -6,3 +6,9 @@
 
 # Side of hypercube with range φ
 α(φ)= 2*round(Int,φ)+1
+
+# Vector x SparseMatrixCSC{Bool}, used in overlap
+import Base: *
+*(z::Adjoint{<:Any,<:AbstractArray{<:Any,1}},W::SparseMatrixCSC{Bool})= (z.parent * W)'
+*(z::AbstractArray{<:Any,1},W::SparseMatrixCSC{Bool})=
+    map(c-> sum(@views z[rowvals(W)[nzrange(W,c)]]), 1:size(W,2))

@@ -39,9 +39,9 @@ end
 
 # ## Proximal Synapses
 const permT= SynapsePermanenceQuantization
-struct ProximalSynapses{SynapseT<:AbstractSynapses}
+struct ProximalSynapses{SynapseT<:AbstractSynapses,ConnectedT}
   synapses::SynapseT
-  connected::BitArray
+  connected::ConnectedT
 
   """
   Make an input x spcols synapse permanence matrix
@@ -80,9 +80,10 @@ struct ProximalSynapses{SynapseT<:AbstractSynapses}
     end
 
     SynapseT= synapseSparsity<0.07 ? SparseSynapses : DenseSynapses
+    ConnectedT= synapseSparsity<0.07 ? SparseMatrixCSC{Bool} : BitArray{2}
     proximalSynapses= SynapseT(inputSize,spSize)
     fillin!(proximalSynapses)
-    new(proximalSynapses, proximalSynapses .> θ_permanence_prox)
+    new{SynapseT,ConnectedT}(proximalSynapses, proximalSynapses .> θ_permanence_prox)
   end
 end
 
@@ -106,7 +107,7 @@ function adapt!(::SparseSynapses,s::ProximalSynapses, z::CellActivity, a::CellAc
                                  .!z_i .* (synapses_activeCol .⊖ params.p⁻)
   end
   # Update cache of connected synapses
-  @inbounds @views s.connected[:,vec(a)].= s.synapses[:,a] .> params.θ_permanence_prox
+  @inbounds s.connected[:,a].= s.synapses.data[:,a] .> params.θ_permanence_prox
 end
 step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)= adapt!(s.synapses, s,z,a,params)
 connected(s::ProximalSynapses)= s.connected

@@ -65,7 +65,7 @@ struct SpatialPooler{Nin,Nsp} #<: Region
     synapseSparsity= (1-params.θ_potential_prob_prox)*(params.enable_local_inhibit ?
                         (α(params.input_potentialRadius)^Nin)/prod(params.inputSize) : 1)
     new{Nin,Nsp}(params,
-        ProximalSynapses{synapseType}(params.inputSize,params.spSize,synapseSparsity,
+        ProximalSynapses(params.inputSize,params.spSize,synapseSparsity,
             params.input_potentialRadius,params.θ_potential_prob_prox,
             params.θ_permanence_prox),
         InhibitionRadius(params.input_potentialRadius,params.inputSize,

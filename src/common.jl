@@ -2,6 +2,7 @@ using SparseArrays
 using Lazy
 using ImageFiltering
 import Random: rand!
+import LinearAlgebra: Adjoint
 import Statistics: mean
 
 # Type aliases
