@@ -52,8 +52,8 @@ struct ProximalSynapses{SynapseT<:AbstractSynapses}
     - If < 1-θ_potential_prob_prox
      - Init perm: rescale Z from [0..1-θ] -> [0..1]: Z/(1-θ)
   """
-  function ProximalSynapses{SynapseT}(inputSize,spSize,input_potentialRadius,
-        θ_potential_prob_prox,θ_permanence_prox) where SynapseT
+  function ProximalSynapses(inputSize,spSize,synapseSparsity,input_potentialRadius,
+        θ_potential_prob_prox,θ_permanence_prox)
     spColumns()= CartesianIndices(spSize)
     # Map column coordinates to their center in the input space. Column coords FROM 1 !!!
     xᶜ(yᵢ)= floor.(UIntSP, (yᵢ.-1) .* (inputSize./spSize)) .+1
@@ -79,6 +79,7 @@ struct ProximalSynapses{SynapseT<:AbstractSynapses}
       return proximalSynapses
     end
 
+    SynapseT= synapseSparsity<0.07 ? SparseSynapses : DenseSynapses
     proximalSynapses= SynapseT(inputSize,spSize)
     fillin!(proximalSynapses)
     new(proximalSynapses, proximalSynapses .> θ_permanence_prox)

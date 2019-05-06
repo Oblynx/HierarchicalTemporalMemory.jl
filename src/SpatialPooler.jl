@@ -64,9 +64,8 @@ struct SpatialPooler{Nin,Nsp} #<: Region
   function SpatialPooler(params::SPParams{Nin,Nsp}= SPParams()) where {Nin,Nsp}
     synapseSparsity= (1-params.θ_potential_prob_prox)*(params.enable_local_inhibit ?
                         (α(params.input_potentialRadius)^Nin)/prod(params.inputSize) : 1)
-    synapseType= synapseSparsity<0.07 ? SparseSynapses : DenseSynapses
     new{Nin,Nsp}(params,
-        ProximalSynapses{synapseType}(params.inputSize,params.spSize,
+        ProximalSynapses{synapseType}(params.inputSize,params.spSize,synapseSparsity,
             params.input_potentialRadius,params.θ_potential_prob_prox,
             params.θ_permanence_prox),
         InhibitionRadius(params.input_potentialRadius,params.inputSize,
