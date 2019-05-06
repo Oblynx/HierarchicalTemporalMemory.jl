@@ -79,79 +79,36 @@ Base.lastindex(::AbstractSynapses, d)=
     error("'end' can't be used to index AbstractSynapses, because the dimension to which it refers isn't clear")
 
 
-# ## Dense Synapses
 # Methods for 2 linear indices
 Base.@propagate_inbounds \
-Base.getindex(S::DenseSynapses, linIdxPre::Int,linIdxPost::Int)= S.data[linIdxPre,linIdxPost]
+Base.getindex(S::AbstractSynapses, linIdxPre::Int,linIdxPost::Int)= S.data[linIdxPre,linIdxPost]
 Base.@propagate_inbounds \
-Base.view(S::DenseSynapses, linIdxPre::Int,linIdxPost::Int)= view(S.data,linIdxPre,linIdxPost)
+Base.view(S::AbstractSynapses, linIdxPre::Int,linIdxPost::Int)= view(S.data,linIdxPre,linIdxPost)
 Base.@propagate_inbounds \
-Base.setindex!(S::DenseSynapses,v, linIdxPre::Int,linIdxPost::Int)= (S.data[linIdxPre,linIdxPost]= v)
+Base.setindex!(S::AbstractSynapses,v, linIdxPre::Int,linIdxPost::Int)= (S.data[linIdxPre,linIdxPost]= v)
 
 # Methods for 2 Cartesian indices
 Base.@propagate_inbounds \
-Base.getindex(S::DenseSynapses, iPre,iPost)=
+Base.getindex(S::AbstractSynapses, iPre,iPost)=
   getdata(S.data,
     (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
     (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
   )
 Base.@propagate_inbounds \
-Base.view(S::DenseSynapses, iPre,iPost)=
+Base.view(S::AbstractSynapses, iPre,iPost)=
   viewdata(S.data,
     (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
     (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
   )
 Base.@propagate_inbounds \
-Base.setindex!(S::DenseSynapses, v,iPre,iPost)=
+Base.setindex!(S::AbstractSynapses, v,iPre,iPost)=
   setdata!(S.data,v,
     (@>> iPre  syn_toindices(S.preDims)  linIdx(S.preLinIdx) ),
     (@>> iPost syn_toindices(S.postDims) linIdx(S.postLinIdx))
   )
 
-# ## Sparse Synapses
-
 SparseArrays.nnz(S::SparseSynapses)= nnz(S.data)
-
-# Special getindex for indexing with 2 tuples {pre,post}
-Base.@propagate_inbounds \
-function Base.getindex(S::SparseSynapses{Npre,Npost}, Ipre::VecTuple{Npre,T},
-    Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
-  expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
-  I_expanded= expand_i()
-  idx= to_indices(S,I_expanded)
-  S.data[linIdx(S.preLinIdx,idx[1:Npre]), linIdx(S.postLinIdx,idx[Npre+1:Npre+Npost])]
-end
-Base.@propagate_inbounds \
-function Base.getindex(S::SparseSynapses{Npre,Npost}, I...) where {Npre,Npost}
-  idx= to_indices(S,I)
-  S.data[linIdx(S.preLinIdx,idx[1:Npre]), linIdx(S.postLinIdx,idx[Npre+1:Npre+Npost])]
-end
-
-# Special setindex! for indexing with 2 tuples {pre,post}
-Base.@propagate_inbounds \
-function Base.setindex!(S::SparseSynapses{Npre,Npost}, v, Ipre::VecTuple{Npre,T},
-    Ipost::VecTuple{Npost,T}) where {Npre,Npost,T<:Integer}
-  expand_i()::NTuple{Npre+Npost,VecInt{Int}}= Tuple([collect(expand(Ipre));collect(expand(Ipost))])
-  I_expanded= expand_i()
-  idx= to_indices(S,I_expanded)
-  _setindex_array!(S,v,idx)
-end
-Base.@propagate_inbounds \
-function Base.setindex!(S::SparseSynapses{Npre,Npost}, v, I...) where {Npre,Npost}
-  #length(I) == Npre+Npost || error("All dimensions must be specified when accessing SparseSynapses")
-  idx= to_indices(S,I)
-  _setindex_array!(S,v,idx)
-end
-
-Base.@propagate_inbounds \
-_setindex_array!(S::SparseSynapses{Npre,Npost}, v::Integer, idx::NTuple{N,<:Integer}) where {Npre,Npost,N}=
-    S.data[linIdx(S.preLinIdx,idx[1:Npre]), linIdx(S.postLinIdx,idx[Npre+1:Npre+Npost])]= v
-Base.@propagate_inbounds \
-function _setindex_array!(S::SparseSynapses{Npre,Npost}, v, idx) where {Npre,Npost}
-  idxPre= linIdx(S.preLinIdx, idx[1:Npre])
-  idxPost= linIdx(S.postLinIdx, idx[Npre+1:Npre+Npost])
-  S.data[idxPre, idxPost]= reshape(v, length(idxPre), length(idxPost))
-end
+sparse_foreach(f, s::SparseSynapses,columnIdx)= sparse_foreach(f,s.data,columnIdx)
 
 # TODO optimize views into SparseSynapses
 #   Views into sparse matrices lack specialized methods for mostly everything. But it looks

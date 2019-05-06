@@ -1,4 +1,4 @@
-_process_sp(t,tN,signal,encParams,sp,display_evaluation=identity)= begin
+_process_sp(t,tN,data,encParams,sp,display_evaluation=identity)= begin
   # z: encoder activation
   z,_= encode_powerDay(data.power_hourly_kw[t], data.hour[t], data.is_weekend[t];
                        encParams...)

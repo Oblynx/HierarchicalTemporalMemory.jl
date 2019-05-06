@@ -22,7 +22,7 @@ display_evaluation(t,sp,sp_activity,spDims)= begin
   sparsity|> display
 
   #histogram(sp.b.b)|> display
-  #histogram(sp.proximalSynapses.synapses[sp.proximalSynapses.synapses.>0])|> display
+  #histogram(sp.proximalSynapses.synapses[sp.proximalSynapses.synapses.>0]|>Vector)|> display
   #heatmap(@> sp_activity reshape(64,32))|> display
   #heatmap(@> sp.b.a_Tmean reshape(64,32))|> display
   #heatmap(sp.proximalSynapses.synapses)|> display
@@ -37,23 +37,25 @@ process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
     encOnlyIdx= setdiff(similarEncIdx, similarSpIdx)
     spOnlyIdx= setdiff(similarSpIdx, similarEncIdx)
     encANDspHistory[t]= (encANDsp= intersect(similarEncIdx,similarSpIdx), Nenc= length(similarEncIdx))
-    t%10==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
+    t%08==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
                                     encOnlyIdx,spOnlyIdx,encANDspHistory)
   end
 
 # Define Spatial Pooler
 inputDims= ((16*25,5*25,3*25),)
 spDims= (2048,)
+#inputDims= (8,)
+#spDims= (12,)
 sp= SpatialPooler(SPParams(
       map(sum,inputDims),spDims,
-      input_potentialRadius=6,
+      input_potentialRadius=35,
       sp_local_sparsity=0.02,
-      θ_potential_prob_prox=0.15,
+      θ_potential_prob_prox=0.931,
       θ_stimulus_act=1,
-      permanence⁺= 0.05,
-      permanence⁻= 0.008,
+      permanence⁺= 0.09,
+      permanence⁻= 0.009,
       β_boost=6,
-      T_boost=400,
+      T_boost=500,
       enable_local_inhibit=false,
       enable_boosting=true))
 # Define input data
