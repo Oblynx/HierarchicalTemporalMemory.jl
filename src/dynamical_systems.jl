@@ -98,14 +98,14 @@ function adapt!(::DenseSynapses,s::ProximalSynapses, z::CellActivity, a::CellAct
 end
 function adapt!(::SparseSynapses,s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
   # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach(s.synapses.data,a) do s,ci,input_i
-    @inbounds synapses= @view nonzeros(s)[ci]
+  sparse_foreach(s.synapses,a) do s,ci,input_i
+    @inbounds synapses_activeCol= @view nonzeros(s)[ci]
     @inbounds z_i= z[input_i]
-    @inbounds synapses.= z_i .* (synapses .⊕ params.p⁺) .+
-                       .!z_i .* (synapses .⊖ params.p⁻)
+    @inbounds synapses_activeCol.= z_i .* (synapses_activeCol .⊕ params.p⁺) .+
+                                 .!z_i .* (synapses_activeCol .⊖ params.p⁻)
   end
   # Update cache of connected synapses
-  @inbounds @views s.connected[:,vec(a)].= s.synapses.data[:,a] .> params.θ_permanence_prox
+  @inbounds @views s.connected[:,vec(a)].= s.synapses[:,a] .> params.θ_permanence_prox
 end
 step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)= adapt!(s.synapses, s,z,a,params)
 connected(s::ProximalSynapses)= s.connected

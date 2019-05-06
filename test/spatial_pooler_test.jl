@@ -37,7 +37,7 @@ process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
     encOnlyIdx= setdiff(similarEncIdx, similarSpIdx)
     spOnlyIdx= setdiff(similarSpIdx, similarEncIdx)
     encANDspHistory[t]= (encANDsp= intersect(similarEncIdx,similarSpIdx), Nenc= length(similarEncIdx))
-    t%04==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
+    t%08==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
                                     encOnlyIdx,spOnlyIdx,encANDspHistory)
   end
 

@@ -108,6 +108,7 @@ Base.setindex!(S::AbstractSynapses, v,iPre,iPost)=
   )
 
 SparseArrays.nnz(S::SparseSynapses)= nnz(S.data)
+sparse_foreach(f, s::SparseSynapses,columnIdx)= sparse_foreach(f,s.data,columnIdx)
 
 # TODO optimize views into SparseSynapses
 #   Views into sparse matrices lack specialized methods for mostly everything. But it looks
