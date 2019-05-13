@@ -9,6 +9,9 @@
 
 # Vector x SparseMatrixCSC{Bool}, used in overlap
 import Base: *
-*(z::Adjoint{<:Any,<:AbstractArray{<:Any,1}},W::SparseMatrixCSC{Bool})= (z.parent * W)'
-*(z::AbstractArray{<:Any,1},W::SparseMatrixCSC{Bool})=
-    map(c-> sum(@views z[rowvals(W)[nzrange(W,c)]]), 1:size(W,2))
+*(z::Adjoint{<:Any,<:AbstractArray{<:Any,1}},W::SparseMatrixCSC{Bool})=
+    map(c-> sum(@views z.parent[rowvals(W)[nzrange(W,c)]]), 1:size(W,2))'
+#*(z::AbstractArray{<:Any,1},W::SparseMatrixCSC{Bool})=
+*(W::Adjoint{Bool,<:SparseMatrixCSC{Bool}},z::AbstractArray{<:Any,1})=
+    map(c-> sum(@views z[rowvals(W.parent)[nzrange(W.parent,c)]]), 1:size(W,1))
+#*(W::SparseMatrixCSC{Bool},z::AbstractArray{<:Any,1})=
