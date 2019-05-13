@@ -169,7 +169,7 @@ function sp_activation(synapses,φ,b,z, spSize,params)
   # W: Connected synapses (size: proximalSynapses)
   W()= connected(synapses)
   # o: overlap
-  o(W)= @> (b' .* (z'*W)) reshape(spSize)
+  o(W)= @> (b .* (W'*z)) reshape(spSize)
   # Z: k-th larger overlap in neighborhood
   # OPTIMIZE: local inhibition is the SP's bottleneck. "mapwindow" is suboptimal;
   #   https://github.com/JuliaImages/Images.jl/issues/751
