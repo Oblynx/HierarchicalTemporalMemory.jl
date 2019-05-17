@@ -141,3 +141,14 @@ function step!(s::Boosting, a_t::CellActivity, φ,T,β, local_inhibit,enable)
   end
 end
 boostfun(a_Tmean,a_Nmean,β)= ℯ^(-β*(a_Tmean-a_Nmean))
+
+
+# ## Distal synapses for the TM (assume the same learning rule governs all types of distal synapses)
+
+struct DistalSynapses
+  synapses::SparseSynapses  # Nseg x Ncell
+  cellSeg::SparseMatrixCSC{Bool,Int}
+end
+cellXseg(s::DistalSynapses)= s.cellSeg
+connected(s::DistalSynapses,θ)= s.synapses.data .> θ
+#step!(s::DistalSynapses, a,c)

@@ -43,3 +43,15 @@ sparse_map(f, s::SparseMatrixCSC,columnIdx)=
     ci= nzrange(s,c)
     f(s,ci,rowvals(s)[ci])
   end
+
+
+# This version applies f elementwise and concatenates the results
+# a: vector of size [Ncol*k], column-major
+# b: vectors of size Ncol
+macro percolumn(f,a,b,k,Ncol)
+  esc(:( $f.(reshape($a,$k,$Ncol), $b') ))
+end
+# This version reduces a per column
+macro percolumn(reduce,a,k,Ncol)
+  esc(:( $reduce(reshape($a,$k,$Ncol),dims=1)|> vec ))
+end
