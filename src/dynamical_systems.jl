@@ -1,4 +1,5 @@
 # ## Inhibition Radius
+
 """
 The inhibition radius of a Spatial Pooler's columns is a dynamical system that evolves
 under the influence of other elements of the Spatial Pooler. It provides an init
@@ -37,7 +38,9 @@ function step!(s::InhibitionRadius{Nin}, a, W, params) where Nin
   s.φ= @> (diameter-1)/2 max(1)
 end
 
+
 # ## Proximal Synapses
+
 const permT= SynapsePermanenceQuantization
 struct ProximalSynapses{SynapseT<:AbstractSynapses,ConnectedT}
   synapses::SynapseT
@@ -86,8 +89,9 @@ struct ProximalSynapses{SynapseT<:AbstractSynapses,ConnectedT}
     new{SynapseT,ConnectedT}(proximalSynapses, proximalSynapses .> θ_permanence_prox)
   end
 end
+connected(s::ProximalSynapses)= s.connected
 
-function adapt!(::DenseSynapses,s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
+function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
   synapses_activeSP= @view s.synapses[:,a]
   activeConn=   @. (synapses_activeSP>0) &  z
   inactiveConn= @. (synapses_activeSP>0) & !z
@@ -98,7 +102,7 @@ function adapt!(::DenseSynapses,s::ProximalSynapses, z::CellActivity, a::CellAct
   # Update cache of connected synapses
   @inbounds s.connected[:,vec(a)].= synapses_activeSP .> params.θ_permanence_prox
 end
-function adapt!(::SparseSynapses,s::ProximalSynapses, z::CellActivity, a::CellActivity, params)
+function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   # Learn synapse permanences according to Hebbian learning rule
   sparse_foreach(s.synapses,a) do s,ci,input_i
     @inbounds synapses_activeCol= @view nonzeros(s)[ci]
@@ -109,10 +113,11 @@ function adapt!(::SparseSynapses,s::ProximalSynapses, z::CellActivity, a::CellAc
   # Update cache of connected synapses
   @inbounds s.connected[:,a].= s.synapses.data[:,a] .> params.θ_permanence_prox
 end
-step!(s::ProximalSynapses, z::CellActivity, a::CellActivity, params)= adapt!(s.synapses, s,z,a,params)
-connected(s::ProximalSynapses)= s.connected
+step!(s::ProximalSynapses, z,a, params)= adapt!(s.synapses, s,z,a,params)
+
 
 # ## Boosting factors
+
 struct Boosting <:DenseArray{Float32,1}
   b::Vector{Float32}
   a_Tmean::Array{Float32}

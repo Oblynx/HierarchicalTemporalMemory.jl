@@ -9,8 +9,8 @@ struct SPParams{Nin,Nsp}
   input_potentialRadius::UIntSP
   sp_local_sparsity::FloatSP
   θ_potential_prob_prox::FloatSP
-  θ_permanence_prox::FloatSP
   θ_stimulus_act::UIntSP
+  θ_permanence_prox::SynapsePermanenceQuantization
   p⁺::SynapsePermanenceQuantization
   p⁻::SynapsePermanenceQuantization
   T_boost::Float32
@@ -49,7 +49,7 @@ function SPParams(inputSize::NTuple{Nin,Int}= (32,32),
   p⁻= round(SynapsePermanenceQuantization, permanence⁻*typemax(SynapsePermanenceQuantization))
   ## Construction
   SPParams{Nin,Nsp}(inputSize,spSize,input_potentialRadius,sp_local_sparsity,
-           θ_potential_prob_prox,θ_permanence_prox,θ_stimulus_act,
+           θ_potential_prob_prox,θ_stimulus_act,θ_permanence_prox,
            p⁺,p⁻, T_boost,β_boost,
            enable_local_inhibit,enable_learning,enable_boosting,topologyWraps)
 end
