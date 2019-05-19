@@ -52,8 +52,10 @@ struct TemporalMemory
   Π::CellActivity
 
   function TemporalMemory(params::TMParams= TMParams())
+    # TODO: init TM
     distalSynapses= DistalSynapses(
         SparseSynapses((params.Ncell,),(params.Nseg,), (T,n,s)->sprand(T,n,s,2e-2)),
+        sprand(Bool,params.Ncell,params.Nseg, 2e-2),
         sprand(Bool,params.Ncell,params.Nseg, 2e-2))
     new(params,distalSynapses,falses(params.Ncell))
   end
@@ -61,28 +63,39 @@ end
 
 # Given a column activation pattern `c` (SP output), step the TM
 function step!(tm::TemporalMemory, c::CellActivity)
-  a,π= tm_activation(tm.distalSynapses, c,tm.Π, tm.params)
-  if tm.params.enable_learning
-    step!(tm.distalSynapses,a,c, tm.params)
-  end
-  return a,π
+  A,B= tm_activation(c,tm.Π,tm.params)
+  tm.params.enable_learning &&
+      step!(tm.distalSynapses,a,c, tm.params)
+  π,segOvp,π_s= tm_prediction(tm.distalSynapses,B,A,tm.params)
+  return A,π
 end
 
-# Given a column activation pattern (SP output), produce the TM cell activity & prediction
+# Given a column activation pattern (SP output), produce the TM cell activity
 # N: num of columns, M: cellPerCol
 # W: [N] column activation (SP output)
 # Π: [MN] predictions at t-1
-# cell2seg(synapses): [MN × Nseg] cell-segment adjacency matrix
-function tm_activation(synapses,W,Π,params)
+function tm_activation(W,Π,params)
   k= params.cellϵcol; Ncol= length(W)
-  π_s(a,D)= D'*a .> params.θ_stimulus_act
-  π(a,D)= cellXseg(synapses)*π_s(a,D) .> 0  # NOTE: params.θ_segment_act instead of 0
+  burst()= W .& .!@percolumn(any,Π, k,Ncol)
   activate(B)= (@percolumn(&,Π,W, k,Ncol) .| B')|> vec
-  B()= W .& .!@percolumn(any,Π, k,Ncol)
+  B= burst()
+  return activate(B),B
+end
+# Given the TM cell activity and which columns are bursting, make TM predictions
+# B: [N] bursting columns
+# A: [MN] TM activation at t
+# cell2seg(synapses): [MN × Nseg] cell-segment adjacency matrix
+function tm_prediction(synapses,B,A, params)
+  segOvp(A,D)= D'*A
+  π_s(segOvp)= segOvp .> params.θ_stimulus_act
+  π(π_s)= cellXseg(synapses)*π_s .> 0  # NOTE: params.θ_segment_act instead of 0
 
+  # OPTIMIZE: update connected at learning
   D= connected(synapses, params.θ_permanence_dist)
-  a= activate(B())
-  return a,π(a,D)
+  # Produce intermediate results needed for learning
+  _segOvp= segOvp(A,D)
+  _π_s= π_s(_segOvp)
+  return π(_π_s),_segOvp,_π_s
 end
 
 end#module
