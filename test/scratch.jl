@@ -1,5 +1,5 @@
 using Logging
-ENV["JULIA_DEBUG"] = "all"
+ENV["JULIA_DEBUG"] = "none"
 logger = ConsoleLogger(stdout, Logging.Debug);
 
 using BenchmarkTools
@@ -26,10 +26,10 @@ tm= TMm.TemporalMemory(TMm.TMParams(colDims,
         θ_stimulus_learn=0
       ))
 
-A,B= TMm.tm_activation(a,tm.Π,tm.params)
+A,B= TMm.tm_activation(a,tm.previous.Π,tm.params)
 Π,_= TMm.tm_prediction(tm.distalSynapses,B,A,tm.params)
-#display(@benchmark TMm.tm_activation(a,tm.Π,tm.params) )
-display(@benchmark TMm.tm_prediction(tm.distalSynapses,B,A,tm.params) )
+#display(@benchmark TMm.tm_prediction(tm.distalSynapses,B,A,tm.params) )
+display(@benchmark TMm.step!(tm,a) )
 
 D= TMm.connected(tm.distalSynapses, tm.params.θ_permanence_dist)
 CS= TMm.cellXseg(tm.distalSynapses)

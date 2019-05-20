@@ -143,12 +143,17 @@ end
 boostfun(a_Tmean,a_Nmean,β)= ℯ^(-β*(a_Tmean-a_Nmean))
 
 
-# ## Distal synapses for the TM (assume the same learning rule governs all types of distal synapses)
+# ## Distal synapses for the TM
+# (assume the same learning rule governs all types of distal synapses)
 
 struct DistalSynapses
   synapses::SparseSynapses  # Nseg x Ncell
   cellSeg::SparseMatrixCSC{Bool,Int}
+  connected::SparseMatrixCSC{Bool,Int}
 end
 cellXseg(s::DistalSynapses)= s.cellSeg
 connected(s::DistalSynapses,θ)= s.synapses.data .> θ
-#step!(s::DistalSynapses, a,c)
+
+function step!(s::DistalSynapses,previous::NamedTuple,A,c, params)
+  @debug previous|>typeof
+end

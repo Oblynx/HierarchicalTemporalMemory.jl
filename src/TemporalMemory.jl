@@ -13,7 +13,7 @@ struct TMParams{Ncol}
   p⁺::SynapsePermanenceQuantization
   p⁻::SynapsePermanenceQuantization
   synapseSampleSize::Int
-  enable_learning::Int
+  enable_learning::Bool
 end
 function TMParams(columnsSize::NTuple{Ncol,Int}=(64,64);
                   cellϵcol=16, Ncell=0, Nseg=0,
@@ -46,10 +46,21 @@ function TMParams(columnsSize::NTuple{Ncol,Int}=(64,64);
                  enable_learning)
 end
 
+mutable struct TMState
+  state::NamedTuple{
+    (:Π, :segOvp, :Πₛ, :Mₛ),  # Ncell, Nseg, Nseg, Nseg
+    Tuple{CellActivity, Vector{Int}, BitArray{1}, BitArray{1}}
+  }
+end
+Base.getproperty(s::TMState, name::Symbol)= name === :state ?
+    getfield(s,:state) : getproperty(getfield(s,:state),name)
+update_TMState!(s::TMState,Π,segOvp,Πₛ,Mₛ)=
+    s.state= (Π= Π, segOvp= segOvp, Πₛ= Πₛ, Mₛ= Mₛ)
+
 struct TemporalMemory
   params::TMParams
   distalSynapses::DistalSynapses
-  Π::CellActivity
+  previous::TMState
 
   function TemporalMemory(params::TMParams= TMParams())
     # TODO: init TM
@@ -57,17 +68,21 @@ struct TemporalMemory
         SparseSynapses((params.Ncell,),(params.Nseg,), (T,n,s)->sprand(T,n,s,2e-2)),
         sprand(Bool,params.Ncell,params.Nseg, 2e-2),
         sprand(Bool,params.Ncell,params.Nseg, 2e-2))
-    new(params,distalSynapses,falses(params.Ncell))
+    new(params,distalSynapses,TMState((
+          Π=falses(params.Ncell), segOvp=zeros(params.Nseg),
+          Πₛ=falses(params.Nseg), Mₛ=falses(params.Nseg)
+        )))
   end
 end
 
 # Given a column activation pattern `c` (SP output), step the TM
 function step!(tm::TemporalMemory, c::CellActivity)
-  A,B= tm_activation(c,tm.Π,tm.params)
+  A,B= tm_activation(c,tm.previous.Π,tm.params)
   tm.params.enable_learning &&
-      step!(tm.distalSynapses,a,c, tm.params)
-  π,segOvp,π_s= tm_prediction(tm.distalSynapses,B,A,tm.params)
-  return A,π
+      step!(tm.distalSynapses,tm.previous.state,A,c, tm.params)
+  Π,segOvp,Πₛ,Mₛ= tm_prediction(tm.distalSynapses,B,A,tm.params)
+  update_TMState!(tm.previous,Π,segOvp,Πₛ,Mₛ)
+  return A,Π
 end
 
 # Given a column activation pattern (SP output), produce the TM cell activity
@@ -87,15 +102,17 @@ end
 # cell2seg(synapses): [MN × Nseg] cell-segment adjacency matrix
 function tm_prediction(synapses,B,A, params)
   segOvp(A,D)= D'*A
-  π_s(segOvp)= segOvp .> params.θ_stimulus_act
-  π(π_s)= cellXseg(synapses)*π_s .> 0  # NOTE: params.θ_segment_act instead of 0
-
+  # Cell depolarization (prediction)
+  Π(Πₛ)= cellXseg(synapses)*Πₛ .> 0  # NOTE: params.θ_segment_act instead of 0
   # OPTIMIZE: update connected at learning
   D= connected(synapses, params.θ_permanence_dist)
-  # Produce intermediate results needed for learning
-  _segOvp= segOvp(A,D)
-  _π_s= π_s(_segOvp)
-  return π(_π_s),_segOvp,_π_s
+  # Overlap of connected segments
+  connected_segOvp= segOvp(A,D)
+  # Segment depolarization (prediction)
+  Πₛ= connected_segOvp .> params.θ_stimulus_act
+  # Sub-threshold segment stimulation sufficient for learning
+  matching_seg= segOvp(A,synapses.synapses.data) .> params.θ_stimulus_learn
+  return Π(Πₛ),connected_segOvp,Πₛ,matching_seg
 end
 
 end#module
