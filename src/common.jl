@@ -4,6 +4,8 @@ using ImageFiltering
 import Random: rand!
 import LinearAlgebra: Adjoint
 import Statistics: mean
+import StatsBase: countmap
+using RandomNumbers.Xorshifts
 
 # Type aliases
 const IntSP= Int32

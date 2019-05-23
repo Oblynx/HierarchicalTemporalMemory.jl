@@ -2,11 +2,11 @@ module TMm
 include("common.jl")
 include("dynamical_systems.jl")
 
-struct TMParams{Ncol}
-  columnsSize::NTuple{Ncol,Int}
+struct TMParams{Ncoldims}
+  columnsSize::NTuple{Ncoldims,Int}
   cellϵcol::Int
+  Ncol::Int
   Ncell::Int
-  Nseg::Int
   θ_stimulus_act::Int
   θ_stimulus_learn::Int
   θ_permanence_dist::SynapsePermanenceQuantization
@@ -15,8 +15,8 @@ struct TMParams{Ncol}
   synapseSampleSize::Int
   enable_learning::Bool
 end
-function TMParams(columnsSize::NTuple{Ncol,Int}=(64,64);
-                  cellϵcol=16, Ncell=0, Nseg=0,
+function TMParams(columnsSize::NTuple{Ncoldims,Int}=(64,64);
+                  cellϵcol=16, Ncell=0,
                   θ_permanence_dist=0.5,
                   θ_stimulus_act=8,
                   θ_stimulus_learn=6,
@@ -26,21 +26,21 @@ function TMParams(columnsSize::NTuple{Ncol,Int}=(64,64);
                   synapseSampleSize=1,
                   max_newSynapses=12,
                   enable_learning=true
-                 ) where Ncol
+                 ) where Ncoldims
+  Ncol= prod(columnsSize)
   if Ncell==0 && cellϵcol>0
     Ncell= prod(columnsSize) * cellϵcol
   elseif Ncell>0
-    cellϵcol= (Ncell / prod(columnsSize))|> round
+    cellϵcol= (Ncell / Ncol)|> round
   else error("[TMParams]: Either Ncell or cellϵcol (cells per column) must be provided")
   end
   θ_stimulus_learn > θ_stimulus_act && error("[TMParams]: Stimulus threshold for
                                               learning can't be larger than activation")
-  Nseg= floor(Nseg/Ncell) * Ncell
   θ_permanence_dist= @>> θ_permanence_dist*typemax(SynapsePermanenceQuantization) round(SynapsePermanenceQuantization)
   p⁺= round(SynapsePermanenceQuantization, permanence⁺*typemax(SynapsePermanenceQuantization))
   p⁻= round(SynapsePermanenceQuantization, permanence⁻*typemax(SynapsePermanenceQuantization))
 
-  TMParams{Ncol}(columnsSize,cellϵcol,Ncell,Nseg,
+  TMParams{Ncoldims}(columnsSize,cellϵcol,Ncol,Ncell,
                  θ_stimulus_act,θ_stimulus_learn,θ_permanence_dist,
                  p⁺,p⁻,synapseSampleSize,
                  enable_learning)
@@ -62,15 +62,18 @@ struct TemporalMemory
   distalSynapses::DistalSynapses
   previous::TMState
 
-  function TemporalMemory(params::TMParams= TMParams())
+  function TemporalMemory(params::TMParams= TMParams();
+                          Nseg_init= prod(params.columnsSize)*params.cellϵcol)
     # TODO: init TM
     distalSynapses= DistalSynapses(
-        SparseSynapses((params.Ncell,),(params.Nseg,), (T,n,s)->sprand(T,n,s,2e-2)),
-        sprand(Bool,params.Ncell,params.Nseg, 2e-2),
-        sprand(Bool,params.Ncell,params.Nseg, 2e-2))
+        SparseSynapses((params.Ncell,),(Nseg_init,), (T,n,s)->sprand(T,n,s,2e-2)),
+        sprand(Bool,params.Ncell,Nseg_init, 2e-2),
+        sprand(Bool,params.Ncell,Nseg_init, 2e-2),
+        sprand(Bool,Nseg_init,params.Ncol, 2e-2),
+        params.cellϵcol,Xoroshiro128Plus(1))
     new(params,distalSynapses,TMState((
-          Π=falses(params.Ncell), segOvp=zeros(params.Nseg),
-          Πₛ=falses(params.Nseg), Mₛ=falses(params.Nseg)
+          Π=falses(params.Ncell), segOvp=zeros(Nseg_init),
+          Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init)
         )))
   end
 end
@@ -79,7 +82,7 @@ end
 function step!(tm::TemporalMemory, c::CellActivity)
   A,B= tm_activation(c,tm.previous.Π,tm.params)
   tm.params.enable_learning &&
-      step!(tm.distalSynapses,tm.previous.state,A,c, tm.params)
+      step!(tm.distalSynapses,tm.previous.state,A,B, tm.params)
   Π,segOvp,Πₛ,Mₛ= tm_prediction(tm.distalSynapses,B,A,tm.params)
   update_TMState!(tm.previous,Π,segOvp,Πₛ,Mₛ)
   return A,Π

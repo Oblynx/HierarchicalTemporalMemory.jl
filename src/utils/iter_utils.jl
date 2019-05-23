@@ -25,7 +25,7 @@ _collect(itr,n,elT)= Base.collect(itr)
 struct Truesof
   b::BitArray
 end
-@inline Base.length(B::Truesof)= length(B.b)
+@inline Base.length(B::Truesof)= count(B.b)
 @inline Base.eltype(::Type{Truesof})= Int
 Base.iterate(B::Truesof, i::Int=1)= begin
   i= findnext(B.b, i)
@@ -54,4 +54,15 @@ end
 # This version reduces a per column
 macro percolumn(reduce,a,k,Ncol)
   esc(:( $reduce(reshape($a,$k,$Ncol),dims=1)|> vec ))
+end
+
+"""
+    bitarray(dims, idx)
+
+Create a bitarray with `true` only at `idx`.
+"""
+function bitarray(dims, idx)
+  r= falses(dims)
+  r[idx].= true
+  return r
 end

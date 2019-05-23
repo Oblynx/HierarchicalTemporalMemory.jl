@@ -1,5 +1,5 @@
 using Logging
-ENV["JULIA_DEBUG"] = "none"
+ENV["JULIA_DEBUG"] = "all"
 logger = ConsoleLogger(stdout, Logging.Debug);
 
 using BenchmarkTools
@@ -13,23 +13,30 @@ include("../src/encoder.jl")
 include("../src/TemporalMemory.jl")
 
 inputDims= (20,)
-colDims= (600,)
-cellϵcol= 8
+colDims= (20,)
+cellϵcol= 3
 sp= SpatialPooler(SPParams(inputDims,colDims))
 z= bitrand(inputDims)
 a= sp_activation(sp.proximalSynapses,sp.φ.φ,sp.b,z,colDims,sp.params)
 
 #Π= bitrand(cellϵcol*prod(colDims))
 tm= TMm.TemporalMemory(TMm.TMParams(colDims,
-        cellϵcol=cellϵcol, Nseg=prod(colDims)*cellϵcol*2,
+        cellϵcol=cellϵcol,
         θ_stimulus_act=1,
         θ_stimulus_learn=0
-      ))
+      ), Nseg_init= prod(colDims)*cellϵcol*2)
 
 A,B= TMm.tm_activation(a,tm.previous.Π,tm.params)
 Π,_= TMm.tm_prediction(tm.distalSynapses,B,A,tm.params)
-#display(@benchmark TMm.tm_prediction(tm.distalSynapses,B,A,tm.params) )
-display(@benchmark TMm.step!(tm,a) )
 
 D= TMm.connected(tm.distalSynapses, tm.params.θ_permanence_dist)
 CS= TMm.cellXseg(tm.distalSynapses)
+
+TMm.step!(tm,a)
+
+#display(@benchmark TMm.tm_prediction(tm.distalSynapses,B,A,tm.params) )
+#display(@benchmark TMm.step!(tm,a) )
+
+count= 0
+f()= begin global count; count+=1 end
+f2()= rand(Int,7)
