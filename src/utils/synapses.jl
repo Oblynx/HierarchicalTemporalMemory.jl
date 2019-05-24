@@ -16,7 +16,7 @@ Base.size(d::DummyArray)= d.dims
 """
 abstract type AbstractSynapses{Npre,Npost} <: AbstractMatrix{SynapsePermanenceQuantization}
 end
-struct SparseSynapses{Npre,Npost} <: AbstractSynapses{Npre,Npost}
+mutable struct SparseSynapses{Npre,Npost} <: AbstractSynapses{Npre,Npost}
   data::SparseMatrixCSC{SynapsePermanenceQuantization,Int}
   preDims::NTuple{Npre,Int}
   postDims::NTuple{Npost,Int}

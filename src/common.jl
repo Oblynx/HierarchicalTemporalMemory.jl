@@ -21,6 +21,7 @@ export IntSP, UIntSP, FloatSP, SynapsePermanenceQuantization
 
 include("utils/tuple_utils.jl")
 include("utils/iter_utils.jl")
+include("utils/array_utils.jl")
 include("utils/arithmetic_utils.jl")
 include("utils/synapses.jl")
 

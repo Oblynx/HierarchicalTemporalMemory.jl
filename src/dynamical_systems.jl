@@ -146,7 +146,7 @@ boostfun(a_Tmean,a_Nmean,β)= ℯ^(-β*(a_Tmean-a_Nmean))
 # ## Distal synapses for the TM
 # (assume the same learning rule governs all types of distal synapses)
 
-struct DistalSynapses
+mutable struct DistalSynapses
   synapses::SparseSynapses              # Ncell x Nseg
   connected::SparseMatrixCSC{Bool,Int}
   cellSeg::SparseMatrixCSC{Bool,Int}    # Ncell x Nseg
@@ -155,8 +155,10 @@ struct DistalSynapses
   rng::Xoroshiro128Plus
 end
 cellXseg(s::DistalSynapses)= s.cellSeg
-col2seg(s::DistalSynapses,col)= s.segCol[:,col].nzind
+col2seg(s::DistalSynapses,col::Int)= s.segCol[:,col].nzind
+col2seg(s::DistalSynapses,col)= s.segCol[:,col].rowval
 col2cell(col,cellϵcol)= (col-1)*cellϵcol+1 : col*cellϵcol
+cell2col(cells,cellϵcol)= @. (cells-1) ÷ cellϵcol + 1
 connected(s::DistalSynapses,θ)= s.synapses.data .> θ
 
 # Adapt distal synapses based on TM state at t-1 and current cell/column activity
@@ -187,7 +189,9 @@ winningSegments(synapses,previous,A,B)=
 # Foreach bursting col, find the best matching segment or grow one if needed
 maxsegϵcol(synapses,A,B,segOvp)= begin
   maxsegs= map(col-> bestmatch(synapses,col,segOvp), Truesof(B))
-  maxsegs[isnothing.(maxsegs)].= growseg!(synapses,isnothing.(maxsegs))
+  @debug maxsegs
+  growseg!(synapses,maxsegs,findall(B))
+  @debug maxsegs
   bitarray(length(segOvp), maxsegs)
 end
 
@@ -206,12 +210,25 @@ function leastusedcell(synapses,col)
       findmin(cellsWithSegs)[2] : rand(synapses.rng, cellsWithoutSegs)
 end
 
-# NOTE Must be idempotent! Maybe check with / update segOvp?
-# TODO add many segments together for efficiency?
-function growseg!(synapses,cols)
-  cell= leastusedcell(synapses,col)
-  Ncell= size(synapses.synapses,1)
-  #synapses.synapses= hcat(synapses.synapses, sparse([cell],[1],[true],Ncell,1))
-  #synapses.connected= hcat(synapses.connected, sparse([cell],[1],))
-  #synapses.cellSeg= hcat(synapses.cellSeg, sparse([cell],[1],[true],Ncell,1))
+# NOTE Should be idempotent! Maybe check with / update segOvp?
+# OPTIMIZE add many segments together for efficiency?
+function growseg!(synapses,maxsegs,colidx)
+  cellsToGrow= leastusedcell.(Ref(synapses),colidx)   # Ref() to cancel broadcasting
+  columnsToGrow= cell2col(cellsToGrow,synapses.cellϵcol)
+  @debug cellsToGrow, columnsToGrow
+  Ncell= size(synapses.synapses,1); Ncol= size(synapses.segCol,2)
+  Nseggrow= length(cellsToGrow)  # grow 1 seg per cell
+
+  # Grow the synapse arrays
+  synapses.segCol= vcat!!(synapses.segCol, columnsToGrow, trues(Nseggrow))
+  synapses.cellSeg= hcat!!(synapses.cellSeg, cellsToGrow,trues(Nseggrow))
+  synapses.connected= hcat!!(synapses.connected, cellsToGrow,falses(Nseggrow))
+                     # TODO SparseSynapses
+
+  #synapses.segCol= vcat(synapses.segCol,
+  #                   sparse(1:Nseggrow,columnsToGrow,trues(Nseggrow),Nseggrow,Ncol))
+  #synapses.cellSeg= hcat(synapses.cellSeg,
+  #                   sparse(cellsToGrow,1:Nseggrow,trues(Nseggrow),Ncell,Nseggrow))
+  #synapses.connected= hcat(synapses.connected,
+  #                   sparse(cellsToGrow,1:Nseggrow,falses(Nseggrow),Ncell,Nseggrow))
 end

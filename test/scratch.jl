@@ -36,7 +36,3 @@ TMm.step!(tm,a)
 
 #display(@benchmark TMm.tm_prediction(tm.distalSynapses,B,A,tm.params) )
 #display(@benchmark TMm.step!(tm,a) )
-
-count= 0
-f()= begin global count; count+=1 end
-f2()= rand(Int,7)
