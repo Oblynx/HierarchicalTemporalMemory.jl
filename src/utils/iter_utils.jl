@@ -1,5 +1,7 @@
-# Iterator transformations, like filters, don't keep the length info. This wrapper allows
-#   length info known programmatically to be used
+"""
+Iterator transformations, like filters, don't keep the length info.
+`LengthfulIter` is a wrapper that allows length info known programmatically to be used.
+"""
 struct LengthfulIter{T,IterT}
   iter::IterT
   n::Int
@@ -20,8 +22,23 @@ function _collect(itr::Base.Generator,sz::Int, elT)
 end
 _collect(itr,n,elT)= Base.collect(itr)
 
+"""
+Iterate over the trues of a BitArray
 
-# Iterate over the trues of a BitArray
+# Examples
+```jldoctest
+julia> using Random; seed!(5);
+julia> b=bitrand(5)
+5-element BitArray{1}:
+  true
+ false
+ false
+  true
+  true
+julia> foreach(i-> print(string(i)*" "), Truesof(b))
+1 4 5
+```
+"""
 struct Truesof
   b::BitArray
 end
@@ -33,6 +50,11 @@ Base.iterate(B::Truesof, i::Int=1)= begin
 end
 Base.collect(B::Truesof)= collect(B.b)
 
+"""
+    sparse_foreach(f, s::SparseMatrixCSC,columnIdx)
+
+Iterate SparseMatrix `s` and apply `f` columnwise (`f(s,nzrange,rowvals)`)
+"""
 sparse_foreach(f, s::SparseMatrixCSC,columnIdx)=
   foreach(Truesof(columnIdx)) do c
     ci= nzrange(s,c)
@@ -44,18 +66,24 @@ sparse_map(f, s::SparseMatrixCSC,columnIdx)=
     f(s,ci,rowvals(s)[ci])
   end
 
+"""
+@percolumn(f,a,b,k,Ncol)
 
-# This version applies f elementwise and concatenates the results
-# a: vector of size [Ncol*k], column-major
-# b: vectors of size Ncol
+Macro to apply `f` elementwise and concatenate the results.
+- `a`: vector of size [`Ncol`*`k`], column-major
+- `b`: vectors of size `Ncol`
+"""
 macro percolumn(f,a,b,k,Ncol)
   esc(:( $f.(reshape($a,$k,$Ncol), $b') ))
 end
-# This version reduces a per column
+"""
+@percolumn(reduce,a,k,Ncol)
+
+Macro to `reduce` `a` per column.
+"""
 macro percolumn(reduce,a,k,Ncol)
   esc(:( $reduce(reshape($a,$k,$Ncol),dims=1)|> vec ))
 end
-
 """
     bitarray(dims, idx)
 
