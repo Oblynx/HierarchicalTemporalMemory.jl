@@ -197,8 +197,9 @@ end
 function _growsynapses!(s, WC,WS, ovp_Mₛ,synapseSampleSize,init_permanence)
   Nnewsyn(ovp)= max(0,synapseSampleSize - ovp)
   Nseg= size(s.cellSeg,2)
-  psampling_newsyn= Nnewsyn.((@> ovp_Mₛ padfalse(Nseg))[WS]) ./ length(WC)
+  psampling_newsyn= min.(1.0, Nnewsyn.((@> ovp_Mₛ padfalse(Nseg))[WS]) ./ length(WC))
   selectedWC= similar(WC)
+
   foreach(Truesof(WS), psampling_newsyn) do seg_i, p
     # Bernoulli sampling from WC with mean sample size == Nnewsyn
     randsubseq!(s.rng,selectedWC,WC,p)
@@ -231,7 +232,7 @@ function bestmatch(synapses,col,ovp_Mₛ)
 end
 # Cell with least segments
 function leastusedcell(synapses,col)
-  cellsWithSegs= cellXseg(synapses)[:,col2seg(synapses,col)].rowval|> countmap
+  cellsWithSegs= cellXseg(synapses)[:,col2seg(synapses,col)].rowval|> countmap_empty
   cellsWithoutSegs= setdiff(col2cell(col,synapses.cellϵcol), cellsWithSegs)
   isempty(cellsWithoutSegs) ?
       findmin(cellsWithSegs)[2] : rand(synapses.rng, cellsWithoutSegs)
@@ -255,3 +256,5 @@ function _grow_synapse_matrices!(synapses::DistalSynapses,columnsToGrow,cellsToG
   synapses.connected= hcat!!(synapses.connected, cellsToGrow,falses(Nseggrow))
   growseg!(synapses.synapses, Nseggrow)
 end
+
+countmap_empty(x)= isempty(x) ? x : countmap(x)

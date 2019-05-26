@@ -1,4 +1,3 @@
-module TMm
 include("common.jl")
 include("dynamical_systems.jl")
 
@@ -13,6 +12,7 @@ struct TMParams{Ncoldims}
   init_permanence::SynapsePermanenceQuantization
   p⁺::SynapsePermanenceQuantization
   p⁻::SynapsePermanenceQuantization
+  LTD_p⁻::SynapsePermanenceQuantization
   synapseSampleSize::Int
   enable_learning::Bool
 end
@@ -24,8 +24,9 @@ function TMParams(columnsSize::NTuple{Ncoldims,Int}=(64,64);
                   init_permanence=0.4,
                   permanence⁺=0.1,
                   permanence⁻=0.08,
+                  LTD_p⁻=0.001,
                   predictedSeg⁻=0.0,
-                  synapseSampleSize=1,
+                  synapseSampleSize=20,
                   max_newSynapses=12,
                   enable_learning=true
                  ) where Ncoldims
@@ -42,10 +43,11 @@ function TMParams(columnsSize::NTuple{Ncoldims,Int}=(64,64);
   init_permanence= @>> init_permanence*typemax(SynapsePermanenceQuantization) round(SynapsePermanenceQuantization)
   p⁺= round(SynapsePermanenceQuantization, permanence⁺*typemax(SynapsePermanenceQuantization))
   p⁻= round(SynapsePermanenceQuantization, permanence⁻*typemax(SynapsePermanenceQuantization))
+  LTD_p⁻= round(SynapsePermanenceQuantization, LTD_p⁻*typemax(SynapsePermanenceQuantization))
 
   TMParams{Ncoldims}(columnsSize,cellϵcol,Ncol,Ncell,
                  θ_stimulus_act,θ_stimulus_learn,θ_permanence_dist,
-                 init_permanence,p⁺,p⁻,synapseSampleSize,
+                 init_permanence,p⁺,p⁻,LTD_p⁻,synapseSampleSize,
                  enable_learning)
 end
 
@@ -67,13 +69,13 @@ struct TemporalMemory
   previous::TMState
 
   function TemporalMemory(params::TMParams= TMParams();
-                          Nseg_init= prod(params.columnsSize)*params.cellϵcol)
+                          Nseg_init=0)
     # TODO: init TM
     distalSynapses= DistalSynapses(
-        SparseSynapses((params.Ncell,),(Nseg_init,), (T,n,s)->sprand(T,n,s,2e-2)),
-        sprand(Bool,params.Ncell,Nseg_init, 2e-2),
-        sprand(Bool,params.Ncell,Nseg_init, 2e-2),
-        sprand(Bool,Nseg_init,params.Ncol, 2e-2),
+        SparseSynapses((params.Ncell,),(Nseg_init,), (T,n,s)->spzeros(T,n,s)),
+        spzeros(Bool,params.Ncell,Nseg_init),
+        spzeros(Bool,params.Ncell,Nseg_init),
+        spzeros(Bool,Nseg_init,params.Ncol),
         params.cellϵcol,Xoroshiro128Plus(1))
     new(params,distalSynapses,TMState((
           A=falses(params.Ncell), Π=falses(params.Ncell), WC=falses(params.Ncell),
@@ -124,5 +126,3 @@ function tm_prediction(synapses,B,A, params)
   Mₛ= matching_segOvp .> params.θ_stimulus_learn
   return Π(Πₛ),Πₛ,Mₛ,matching_segOvp
 end
-
-end#module
