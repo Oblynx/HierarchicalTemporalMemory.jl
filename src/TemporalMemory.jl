@@ -48,14 +48,14 @@ end
 
 mutable struct TMState
   state::NamedTuple{
-    (:Π, :segOvp, :Πₛ, :Mₛ),  # Ncell, Nseg, Nseg, Nseg
-    Tuple{CellActivity, Vector{Int}, BitArray{1}, BitArray{1}}
+    (:Π, :WC, :Πₛ, :Mₛ, :ovp_Mₛ),  # Ncell, Ncell, Nseg, Nseg, Nseg
+    Tuple{CellActivity, CellActivity, BitArray{1}, BitArray{1}, Vector{Int}}
   }
 end
 Base.getproperty(s::TMState, name::Symbol)= name === :state ?
     getfield(s,:state) : getproperty(getfield(s,:state),name)
-update_TMState!(s::TMState,Π,segOvp,Πₛ,Mₛ)=
-    s.state= (Π= Π, segOvp= segOvp, Πₛ= Πₛ, Mₛ= Mₛ)
+update_TMState!(s::TMState; Π,WC,Πₛ,Mₛ,ovp_Mₛ)=
+    s.state= (Π= Π, WC= WC, Πₛ= Πₛ, Mₛ= Mₛ, ovp_Mₛ=ovp_Mₛ)
 
 struct TemporalMemory
   params::TMParams
@@ -72,32 +72,34 @@ struct TemporalMemory
         sprand(Bool,Nseg_init,params.Ncol, 2e-2),
         params.cellϵcol,Xoroshiro128Plus(1))
     new(params,distalSynapses,TMState((
-          Π=falses(params.Ncell), segOvp=zeros(Nseg_init),
-          Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init)
+          Π=falses(params.Ncell), WC=falses(params.Ncell),
+          Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init),
+          ovp_Mₛ=zeros(Nseg_init)
         )))
   end
 end
 
 # Given a column activation pattern `c` (SP output), step the TM
 function step!(tm::TemporalMemory, c::CellActivity)
-  A,B= tm_activation(c,tm.previous.Π,tm.params)
-  tm.params.enable_learning &&
-      step!(tm.distalSynapses,tm.previous.state,A,B, tm.params)
-  Π,segOvp,Πₛ,Mₛ= tm_prediction(tm.distalSynapses,B,A,tm.params)
-  update_TMState!(tm.previous,Π,segOvp,Πₛ,Mₛ)
+  A,B,WC= tm_activation(c,tm.previous.Π,tm.params)
+  step!(tm.distalSynapses,WC,tm.previous.state,A,B, tm.params)
+  Π,Πₛ,Mₛ,ovp_Mₛ= tm_prediction(tm.distalSynapses,B,A,tm.params)
+  update_TMState!(tm.previous,Π=Π,WC=WC,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
   return A,Π
 end
 
 # Given a column activation pattern (SP output), produce the TM cell activity
 # N: num of columns, M: cellPerCol
-# W: [N] column activation (SP output)
+# a: [N] column activation (SP output)
 # Π: [MN] predictions at t-1
-function tm_activation(W,Π,params)
-  k= params.cellϵcol; Ncol= length(W)
-  burst()= W .& .!@percolumn(any,Π, k,Ncol)
-  activate(B)= (@percolumn(&,Π,W, k,Ncol) .| B')|> vec
+function tm_activation(c,Π,params)
+  k= params.cellϵcol; Ncol= length(c)
+  burst()= c .& .!@percolumn(any,Π, k,Ncol)
+  activate_predicted()= @percolumn(&,Π,c, k,Ncol)
+  activate(A_pred, B)= (A_pred .| B')|> vec
   B= burst()
-  return activate(B),B
+  A_pred= activate_predicted()
+  return activate(A_pred,B), B, A_pred|>vec
 end
 # Given the TM cell activity and which columns are bursting, make TM predictions
 # B: [N] bursting columns
@@ -114,8 +116,9 @@ function tm_prediction(synapses,B,A, params)
   # Segment depolarization (prediction)
   Πₛ= connected_segOvp .> params.θ_stimulus_act
   # Sub-threshold segment stimulation sufficient for learning
-  matching_seg= segOvp(A,synapses.synapses.data) .> params.θ_stimulus_learn
-  return Π(Πₛ),connected_segOvp,Πₛ,matching_seg
+  matching_segOvp= segOvp(A,synapses.synapses.data)
+  Mₛ= matching_segOvp .> params.θ_stimulus_learn
+  return Π(Πₛ),Πₛ,Mₛ,matching_segOvp
 end
 
 end#module
