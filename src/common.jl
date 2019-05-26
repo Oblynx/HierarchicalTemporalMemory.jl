@@ -1,5 +1,5 @@
 using SparseArrays
-using Lazy
+using Lazy: @>, @>>
 using ImageFiltering
 import Random: rand!
 import LinearAlgebra: Adjoint

@@ -48,14 +48,15 @@ end
 
 mutable struct TMState
   state::NamedTuple{
-    (:Π, :WC, :Πₛ, :Mₛ, :ovp_Mₛ),  # Ncell, Ncell, Nseg, Nseg, Nseg
-    Tuple{CellActivity, CellActivity, BitArray{1}, BitArray{1}, Vector{Int}}
+    (:A, :Π, :WC, :Πₛ, :Mₛ, :ovp_Mₛ),  # Ncell, Ncell, Ncell, Nseg, Nseg, Nseg
+    Tuple{CellActivity, CellActivity, CellActivity,
+          BitArray{1}, BitArray{1}, Vector{Int}}
   }
 end
 Base.getproperty(s::TMState, name::Symbol)= name === :state ?
     getfield(s,:state) : getproperty(getfield(s,:state),name)
-update_TMState!(s::TMState; Π,WC,Πₛ,Mₛ,ovp_Mₛ)=
-    s.state= (Π= Π, WC= WC, Πₛ= Πₛ, Mₛ= Mₛ, ovp_Mₛ=ovp_Mₛ)
+update_TMState!(s::TMState; A,Π,WC,Πₛ,Mₛ,ovp_Mₛ)=
+    s.state= (A=A, Π= Π, WC= WC, Πₛ= Πₛ, Mₛ= Mₛ, ovp_Mₛ=ovp_Mₛ)
 
 struct TemporalMemory
   params::TMParams
@@ -72,7 +73,7 @@ struct TemporalMemory
         sprand(Bool,Nseg_init,params.Ncol, 2e-2),
         params.cellϵcol,Xoroshiro128Plus(1))
     new(params,distalSynapses,TMState((
-          Π=falses(params.Ncell), WC=falses(params.Ncell),
+          A=falses(params.Ncell), Π=falses(params.Ncell), WC=falses(params.Ncell),
           Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init),
           ovp_Mₛ=zeros(Nseg_init)
         )))
@@ -82,9 +83,9 @@ end
 # Given a column activation pattern `c` (SP output), step the TM
 function step!(tm::TemporalMemory, c::CellActivity)
   A,B,WC= tm_activation(c,tm.previous.Π,tm.params)
-  step!(tm.distalSynapses,WC,tm.previous.state,A,B, tm.params)
+  step!(tm.distalSynapses,WC, tm.previous.state,A,B,tm.params)
   Π,Πₛ,Mₛ,ovp_Mₛ= tm_prediction(tm.distalSynapses,B,A,tm.params)
-  update_TMState!(tm.previous,Π=Π,WC=WC,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
+  update_TMState!(tm.previous,A=A,Π=Π,WC=WC,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
   return A,Π
 end
 

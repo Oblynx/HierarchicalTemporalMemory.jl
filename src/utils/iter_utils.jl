@@ -89,8 +89,9 @@ end
 
 Create a bitarray with `true` only at `idx`.
 """
-function bitarray(dims, idx)
+function bitarray(idx,dims)
   r= falses(dims)
   r[idx].= true
   return r
 end
+padfalse(b,dim)= [b;falses(dim-length(b))]

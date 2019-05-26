@@ -68,3 +68,10 @@ function hcat!!(s::SparseMatrixCSC, I,V)
   # Construct the new SparseMatrixCSC
   SparseMatrixCSC(s.m,n,s.colptr,s.rowval,s.nzval)
 end
+# Change just the number of columns, without adding any new values
+function hcat!!(s::SparseMatrixCSC,k)
+  n= s.n+k
+  resize!(s.colptr,n+1)
+  s.colptr[s.n+2:end].= s.colptr[s.n+1]
+  SparseMatrixCSC(s.m,n,s.colptr,s.rowval,s.nzval)
+end

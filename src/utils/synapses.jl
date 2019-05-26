@@ -132,7 +132,6 @@ linIdx(linIdxArray, idx::Vector{NTuple{N,Int}}) where N=
 linIdx(linIdxArray, idx::Tuple)= vec(linIdxArray[idx...])::Vector{Int}
 linIdx(linIdxArray, idx)= (linIdx(linIdxArray, i) for i in idx)
 
-
 syn_toindices(d, i::NTuple{N,Int}) where N= i
 syn_toindices(d, i::CartesianIndex)= i
 syn_toindices(d, i::CellActivity)= i
@@ -190,3 +189,21 @@ iseager(::Int)= Val(true)
 iseager(::Vector)= Val(true)
 iseager(::CellActivity)= Val(true)
 iseager(::Any)= Val(false)
+
+"""
+    growseg!(synapses, Nseggrow)
+
+Linearly append new segments to the postsynaptic dimensions. If `length(postDims)>1`, append
+to the last dimension. This doesn't create any new synapses, it only affects the matrix size
+(assume the synapses are between presynaptic cell bodies and postsynaptic dendritic segments,
+like the DistalSynapses of the TM)
+"""
+function growseg!(s::SparseSynapses, Nseggrow)
+  incLastTuple(inc,last::Number)= (inc+last,)
+  incLastTuple(inc,first,tuple...)= (first,incLastTuple(inc,tuple...)...)
+  postDims= incLastTuple(Nseggrow, s.postDims...)
+
+  s.postDims= postDims
+  s.postLinIdx= LinearIndices(postDims)
+  s.data= hcat!!(s.data, Nseggrow)
+end
