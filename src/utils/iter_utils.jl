@@ -94,4 +94,5 @@ function bitarray(idx,dims)
   r[idx].= true
   return r
 end
-padfalse(b,dim)= [b;falses(dim-length(b))]
+padfalse(b::BitArray,dim)= [b;falses(dim-length(b))]
+padfalse(b::Vector{Int},dim)= [b;zeros(Int,dim-length(b))]

@@ -10,6 +10,7 @@ struct TMParams{Ncoldims}
   θ_stimulus_act::Int
   θ_stimulus_learn::Int
   θ_permanence_dist::SynapsePermanenceQuantization
+  init_permanence::SynapsePermanenceQuantization
   p⁺::SynapsePermanenceQuantization
   p⁻::SynapsePermanenceQuantization
   synapseSampleSize::Int
@@ -20,6 +21,7 @@ function TMParams(columnsSize::NTuple{Ncoldims,Int}=(64,64);
                   θ_permanence_dist=0.5,
                   θ_stimulus_act=8,
                   θ_stimulus_learn=6,
+                  init_permanence=0.4,
                   permanence⁺=0.1,
                   permanence⁻=0.08,
                   predictedSeg⁻=0.0,
@@ -37,12 +39,13 @@ function TMParams(columnsSize::NTuple{Ncoldims,Int}=(64,64);
   θ_stimulus_learn > θ_stimulus_act && error("[TMParams]: Stimulus threshold for
                                               learning can't be larger than activation")
   θ_permanence_dist= @>> θ_permanence_dist*typemax(SynapsePermanenceQuantization) round(SynapsePermanenceQuantization)
+  init_permanence= @>> init_permanence*typemax(SynapsePermanenceQuantization) round(SynapsePermanenceQuantization)
   p⁺= round(SynapsePermanenceQuantization, permanence⁺*typemax(SynapsePermanenceQuantization))
   p⁻= round(SynapsePermanenceQuantization, permanence⁻*typemax(SynapsePermanenceQuantization))
 
   TMParams{Ncoldims}(columnsSize,cellϵcol,Ncol,Ncell,
                  θ_stimulus_act,θ_stimulus_learn,θ_permanence_dist,
-                 p⁺,p⁻,synapseSampleSize,
+                 init_permanence,p⁺,p⁻,synapseSampleSize,
                  enable_learning)
 end
 
@@ -111,7 +114,7 @@ function tm_prediction(synapses,B,A, params)
   # Cell depolarization (prediction)
   Π(Πₛ)= cellXseg(synapses)*Πₛ .> 0  # NOTE: params.θ_segment_act instead of 0
   # OPTIMIZE: update connected at learning
-  D= connected(synapses, params.θ_permanence_dist)
+  D= connected(synapses)
   # Overlap of connected segments
   connected_segOvp= segOvp(A,D)
   # Segment depolarization (prediction)

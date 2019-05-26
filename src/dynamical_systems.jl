@@ -104,8 +104,9 @@ function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
 end
 function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach((s,col_i,input_i)-> learn_sparsesynapses!(s,col_i,input_i,
-                                        z,params.p⁺,params.p⁻), s.synapses,a)
+  sparse_foreach((s,col_i,input_i)->
+                    learn_sparsesynapses!(s,col_i,input_i, z,params.p⁺,params.p⁻),
+                 s.synapses, a)
   # Update cache of connected synapses
   @inbounds s.connected[:,a].= s.synapses.data[:,a] .> params.θ_permanence_prox
 end
@@ -161,29 +162,26 @@ col2seg(s::DistalSynapses,col::Int)= s.segCol[:,col].nzind
 col2seg(s::DistalSynapses,col)= s.segCol[:,col].rowval
 col2cell(col,cellϵcol)= (col-1)*cellϵcol+1 : col*cellϵcol
 cell2col(cells,cellϵcol)= @. (cells-1) ÷ cellϵcol + 1
-connected(s::DistalSynapses,θ)= s.synapses.data .> θ
+connected(s::DistalSynapses)= s.synapses.data
 
 # Adapt distal synapses based on TM state at t-1 and current cell/column activity
 # A: [Ncell] cell activity
 # B: [Ncol] column activity
 # WC: [Ncell] current winner cells from predicted columns; add from bursting columns
 function step!(s::DistalSynapses,WC,previous::NamedTuple,A,B, params)
-  WS= getWS_WC!(WC, s,previous.Πₛ,A, B,previous.ovp_Mₛ)
-  @debug WS
+  WS= get_grow__winseg_wincell!(s,WC, previous.Πₛ,A, B,previous.ovp_Mₛ)
   # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach((s,seg_i,cell_i)-> learn_sparsesynapses!(s,seg_i,cell_i,
-                                        previous.A,params.p⁺,params.p⁻), s.synapses, WS)
-
-  # New synapse count
-  # Pick random from WC
-  # Grow new synapses (percolumn manual | setindex percolumn | setindex WC,WS,sparse_V)
-
-
+  sparse_foreach((s,seg_i,cell_i)->
+                    learn_sparsesynapses!(s,seg_i,cell_i, previous.A,params.p⁺,params.p⁻),
+                 s.synapses, WS)
+  growsynapses!(s, previous.WC,WS, previous.ovp_Mₛ,params.synapseSampleSize,params.init_permanence)
   # Update cache of connected synapses
   #@inbounds s.connected[:,WS].= s.synapses.data[:,WS] .> params.θ_permanence_prox
+  s.connected= s.synapses.data .> params.θ_permanence_dist
 end
-# Calculate and return WinningSegments. Update WinnerCells with bursting columns.
-function getWS_WC!(WC, s,Πₛ,A, B,ovp_Mₛ)
+# Calculate and return WinningSegments, growing new segments where needed.
+#   Update WinnerCells with bursting columns.
+function get_grow__winseg_wincell!(s,WC, Πₛ,A, B,ovp_Mₛ)
   WS_activecol= winningSegments_activecol(s,Πₛ,A)
   WS_burstcol= maxsegϵburstcol!(s,B,ovp_Mₛ)
   Nseg= size(s.cellSeg,2)
@@ -192,10 +190,26 @@ function getWS_WC!(WC, s,Πₛ,A, B,ovp_Mₛ)
   WC[s.cellSeg*WS_burstcol.>0].= true
   return WS
 end
+growsynapses!(s, WC::CellActivity,WS, ovp_Mₛ,synapseSampleSize,init_permanence)= begin
+  WC= findall(WC)
+  !isempty(WC) && _growsynapses!(s, WC,WS, ovp_Mₛ,synapseSampleSize,init_permanence)
+end
+function _growsynapses!(s, WC,WS, ovp_Mₛ,synapseSampleSize,init_permanence)
+  Nnewsyn(ovp)= max(0,synapseSampleSize - ovp)
+  Nseg= size(s.cellSeg,2)
+  psampling_newsyn= Nnewsyn.((@> ovp_Mₛ padfalse(Nseg))[WS]) ./ length(WC)
+  selectedWC= similar(WC)
+  foreach(Truesof(WS), psampling_newsyn) do seg_i, p
+    # Bernoulli sampling from WC with mean sample size == Nnewsyn
+    randsubseq!(s.rng,selectedWC,WC,p)
+    # Grow new synapses (percolumn manual | setindex percolumn | setindex WC,WS,sparse_V)
+    s.synapses.data[selectedWC, seg_i].= init_permanence
+  end
+end
 
 # If a cell was previously depolarized and now becomes active, the segments that caused
 # the depolarization are winning.
-winningSegments_activecol(synapses,Πₛ,A)= Πₛ .& (cellXseg(synapses)'A)
+winningSegments_activecol(synapses,Πₛ,A)= Πₛ .& (cellXseg(synapses)'A .>0)
 # If a cell is part of a bursting column, the segment in the column with the highest
 # overlap wins.
 # Foreach bursting col, find the best matching segment or grow one if needed
@@ -205,7 +219,6 @@ maxsegϵburstcol!(synapses,B,ovp_Mₛ)= begin
   map!(col->bestmatch(synapses,col,ovp_Mₛ), maxsegs, burstingCols)
   growseg!(synapses,maxsegs,findall(B))
   Nseg= size(synapses.cellSeg,2)
-  @debug maxsegs
   @> maxsegs bitarray(Nseg)
 end
 
@@ -226,22 +239,19 @@ end
 
 # OPTIMIZE add many segments together for efficiency?
 function growseg!(synapses::DistalSynapses,maxsegs::Vector{Option{Int}},burstingcolidx)
-  cellsToGrow= leastusedcell.(Ref(synapses),burstingcolidx)   # Ref() to cancel broadcasting
+  # Ref() to cancel broadcasting for the synapses
+  cellsToGrow= leastusedcell.(Ref(synapses), burstingcolidx[isnothing.(maxsegs)])
   columnsToGrow= cell2col(cellsToGrow,synapses.cellϵcol)
-  @debug cellsToGrow, columnsToGrow
   Ncell= size(synapses.synapses,1); Ncol= size(synapses.segCol,2)
   Nseg_before= size(synapses.cellSeg,2)
   Nseggrow= length(cellsToGrow)  # grow 1 seg per cell
-
-  # Grow synapse matrices
+  _grow_synapse_matrices!(synapses::DistalSynapses,columnsToGrow,cellsToGrow,Nseggrow)
+  # Replace in maxsegs, `nothing` with something
+  maxsegs[isnothing.(maxsegs)].= Nseg_before.+(1:Nseggrow)
+end
+function _grow_synapse_matrices!(synapses::DistalSynapses,columnsToGrow,cellsToGrow,Nseggrow)
   synapses.segCol= vcat!!(synapses.segCol, columnsToGrow, trues(Nseggrow))
   synapses.cellSeg= hcat!!(synapses.cellSeg, cellsToGrow,trues(Nseggrow))
   synapses.connected= hcat!!(synapses.connected, cellsToGrow,falses(Nseggrow))
   growseg!(synapses.synapses, Nseggrow)
-
-  # Replace in maxsegs, `nothing` with something
-  maxsegs[isnothing.(maxsegs)].= Nseg_before.+(1:Nseggrow)
-  #map!(maxsegs,maxsegs) do seg
-  #  isnothing(seg) ? Nseg_before+1 : seg
-  #end
 end

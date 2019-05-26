@@ -1,7 +1,7 @@
 using SparseArrays
 using Lazy: @>, @>>
 using ImageFiltering
-import Random: rand!
+import Random: rand!, randsubseq!
 import LinearAlgebra: Adjoint
 import Statistics: mean
 import StatsBase: countmap
