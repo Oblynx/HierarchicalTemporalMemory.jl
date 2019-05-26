@@ -104,16 +104,16 @@ function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
 end
 function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach((s,col_i,input_i)-> sparsesynapses_learn!(s,col_i,input_i,z,params),
-                 s.synapses,a)
+  sparse_foreach((s,col_i,input_i)-> learn_sparsesynapses!(s,col_i,input_i,
+                                        z,params.p⁺,params.p⁻), s.synapses,a)
   # Update cache of connected synapses
   @inbounds s.connected[:,a].= s.synapses.data[:,a] .> params.θ_permanence_prox
 end
-function sparsesynapses_learn!(s,col_i,input_i,z,params)
+function learn_sparsesynapses!(s,col_i,input_i,z,p⁺,p⁻)
   @inbounds synapses_activeCol= @view nonzeros(s)[col_i]
   @inbounds z_i= z[input_i]
-  @inbounds synapses_activeCol.= z_i .* (synapses_activeCol .⊕ params.p⁺) .+
-                               .!z_i .* (synapses_activeCol .⊖ params.p⁻)
+  @inbounds synapses_activeCol.= z_i .* (synapses_activeCol .⊕ p⁺) .+
+                               .!z_i .* (synapses_activeCol .⊖ p⁻)
 end
 step!(s::ProximalSynapses, z,a, params)= adapt!(s.synapses, s,z,a,params)
 
@@ -168,29 +168,31 @@ connected(s::DistalSynapses,θ)= s.synapses.data .> θ
 # B: [Ncol] column activity
 # WC: [Ncell] current winner cells from predicted columns; add from bursting columns
 function step!(s::DistalSynapses,WC,previous::NamedTuple,A,B, params)
-  WS_activecol= winningSegments_activecol(s,previous.Πₛ,A)
-  WS_burstcol= maxsegϵburstcol!(s,B,previous.ovp_Mₛ)
-  Nseg= size(s.cellSeg,2)
-  WS= (@> WS_activecol padfalse(Nseg)) .| WS_burstcol
-
-  # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach(s.synapses, WS) do s,seg_i,cell_i
-    @inbounds synapses_winSeg= @view nonzeros(s)[seg_i]
-    @inbounds A_i= previous.A[cell_i]
-    @inbounds synapses_winSeg.= A_i .* (synapses_winSeg .⊕ params.p⁺) .+
-                              .!A_i .* (synapses_winSeg .⊖ params.p⁻)
-
-    # TODO: grow new synapses to A
-    #NnewSynapse=
-    #growsynapses!(synapses_winSeg)
-  end
-  # Update winner cells with entries from bursting columns
-  WC[s.cellSeg*WS_burstcol.>0].= true
-
+  WS= getWS_WC!(WC, s,previous.Πₛ,A, B,previous.ovp_Mₛ)
   @debug WS
+  # Learn synapse permanences according to Hebbian learning rule
+  sparse_foreach((s,seg_i,cell_i)-> learn_sparsesynapses!(s,seg_i,cell_i,
+                                        previous.A,params.p⁺,params.p⁻), s.synapses, WS)
+
+  # New synapse count
+  # Pick random from WC
+  # Grow new synapses (percolumn manual | setindex percolumn | setindex WC,WS,sparse_V)
+
+
   # Update cache of connected synapses
   #@inbounds s.connected[:,WS].= s.synapses.data[:,WS] .> params.θ_permanence_prox
 end
+# Calculate and return WinningSegments. Update WinnerCells with bursting columns.
+function getWS_WC!(WC, s,Πₛ,A, B,ovp_Mₛ)
+  WS_activecol= winningSegments_activecol(s,Πₛ,A)
+  WS_burstcol= maxsegϵburstcol!(s,B,ovp_Mₛ)
+  Nseg= size(s.cellSeg,2)
+  WS= (@> WS_activecol padfalse(Nseg)) .| WS_burstcol
+  # Update winner cells with entries from bursting columns
+  WC[s.cellSeg*WS_burstcol.>0].= true
+  return WS
+end
+
 # If a cell was previously depolarized and now becomes active, the segments that caused
 # the depolarization are winning.
 winningSegments_activecol(synapses,Πₛ,A)= Πₛ .& (cellXseg(synapses)'A)
