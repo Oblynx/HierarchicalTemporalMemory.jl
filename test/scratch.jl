@@ -12,9 +12,9 @@ include("../src/SpatialPooler.jl")
 include("../src/encoder.jl")
 include("../src/TemporalMemory.jl")
 
-inputDims= (20,)
-colDims= (20,)
-cellϵcol= 3
+inputDims= (800,)
+colDims= (1000,)
+cellϵcol= 10
 sp= SpatialPooler(SPParams(inputDims,colDims))
 z= bitrand(inputDims)
 a= sp_activation(sp.proximalSynapses,sp.φ.φ,sp.b,z,colDims,sp.params)
@@ -24,12 +24,12 @@ tm= TMm.TemporalMemory(TMm.TMParams(colDims,
         cellϵcol=cellϵcol,
         θ_stimulus_act=1,
         θ_stimulus_learn=0
-      ), Nseg_init= prod(colDims)*cellϵcol*2)
+      ),Nseg_init= prod(colDims)*cellϵcol)
 
 A,B= TMm.tm_activation(a,tm.previous.Π,tm.params)
 Π,_= TMm.tm_prediction(tm.distalSynapses,B,A,tm.params)
 
-D= TMm.connected(tm.distalSynapses, tm.params.θ_permanence_dist)
+D= TMm.connected(tm.distalSynapses)
 CS= TMm.cellXseg(tm.distalSynapses)
 
 TMm.step!(tm,a)

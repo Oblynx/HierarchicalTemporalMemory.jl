@@ -1,11 +1,11 @@
 _process_sp(t,tN,data,encParams,sp,display_evaluation=identity)= begin
   # z: encoder activation
-  z,_= encode_powerDay(data.power_hourly_kw[t], data.hour[t], data.is_weekend[t];
+  z,bucket= encode_powerDay(data.power_hourly_kw[t], data.hour[t], data.is_weekend[t];
                        encParams...)
   # a: SP activation
   a= step!(sp,z)
   t%(tN÷10)==0 && display_evaluation(t,sp,a,sp.params.spSize)
-  (z,a)
+  return z,a,bucket
 end
 _process_tm(t,tN, tm,a)= (A,Π)= step!(tm,a)
 identity(a...)= a
