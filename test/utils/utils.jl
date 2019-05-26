@@ -4,10 +4,10 @@ _process_sp(t,tN,data,encParams,sp,display_evaluation=identity)= begin
                        encParams...)
   # a: SP activation
   a= step!(sp,z)
-
   t%(tN÷10)==0 && display_evaluation(t,sp,a,sp.params.spSize)
   (z,a)
 end
+_process_tm(t,tN, tm,a)= (A,Π)= step!(tm,a)
 identity(a...)= a
 read_gympower()= begin
   data= CSV.read("test/test_data/gym_power_benchmark.csv", allowmissing=:auto)
