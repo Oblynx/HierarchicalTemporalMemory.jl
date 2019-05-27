@@ -12,7 +12,8 @@ predict!(classifier::SDRClassifier, Π,target::Int; enable_learning=true)=
     predict!(classifier, Π,bitarray(target,classifier.targetSize), enable_learning=enable_learning)
 function predict!(classifier::SDRClassifier, Π,target::BitArray{1}; enable_learning=true)
   A(Π)= classifier.W*Π
-  nonlinearity(A)= ℯ.^A ./ sum(ℯ.^A)
+  saturate(x)= isnan(x) ? 1 : x
+  nonlinearity(A)= saturate.(ℯ.^A ./ sum(ℯ.^A))
   adapt()= -classifier.α .* (classifier.history_pred[:,end] .- target)*Π[Π]'
   circshift!(history,prediction)= begin
     history[:,2:end].= history[:,1:end-1]
