@@ -17,23 +17,23 @@ include("../src/TemporalMemory.jl")
 include("utils/utils.jl")
 
 display_evaluation(t,sp,sp_activity,spDims)= println("t=$t")
-process_data!(history_enc,history_SP,history_TMout,history_TMpred,
-              history_decodedPred,history_likelyPred,
-              tN,data,encParams,sp,tm,decoder)=
+process_data!(tN,data,encParams,sp,tm,decoder)=
   for t in 1:tN
     z,a,power_bucket= _process_sp(t,tN,data,encParams,sp,display_evaluation)
-    A,Π= _process_tm(t,tN, tm,a)
+    A,Π,B= _process_tm(t,tN, tm,a)
     prediction= predict!(decoder,Π,power_bucket)
     likelyPred= reverse_simpleArithmetic(prediction,"mode",encParams.power_p)
     history_enc[:,t]= z;    history_SP[:,t]= a
     history_TMout[:,t]= A;  history_TMpred[:,t]= Π
     history_decodedPred[:,t]= prediction; history_likelyPred[t]= likelyPred
+
+    global avg_burst= ((t-1)*avg_burst+count(B)/length(B))/t
   end
 
 prediction_timesteps=1
 inputDims= ((12,3,3).*25,)
-colDims= (1024,)
-cellϵcol= 10
+colDims= (1548,)
+cellϵcol= 16
 sp= SpatialPooler(SPParams(
       map(sum,inputDims),colDims,
       input_potentialRadius=35,
@@ -48,8 +48,11 @@ sp= SpatialPooler(SPParams(
       enable_boosting=true))
 tm= TemporalMemory(TMParams(colDims,
       cellϵcol=cellϵcol,
-      θ_stimulus_act=10,
-      θ_stimulus_learn=9
+      θ_stimulus_act=82,
+      θ_stimulus_learn=70,
+      synapseSampleSize=30,
+      permanence⁺=0.10,
+      permanence⁻=0.14
      ))
 Ncol= prod(colDims); Ncell= Ncol*cellϵcol
 # Define input data
@@ -65,10 +68,13 @@ history_TMout=  falses(Ncell,tN)
 history_TMpred= falses(Ncell,tN)
 history_decodedPred= zeros(encParams.power_p.buckets,tN)
 history_likelyPred= zeros(tN)
+avg_burst= 0
 
-process_data!(history_enc,history_SP,history_TMout,history_TMpred,
-    history_decodedPred,history_likelyPred,
-    tN,data,encParams,sp,tm,decoder)
+process_data!(tN,data,encParams,sp,tm,decoder)
 
 errormetric= mase(data.power_hourly_kw,history_likelyPred,prediction_timesteps)
 display("Prediction MASE: $errormetric")
+
+avg_TMout_sparsity= mapslices(x->count(x)./length(x),history_TMout,dims=1)'|>StatsBase.median
+display(avg_TMout_sparsity)
+display(avg_burst)

@@ -169,7 +169,7 @@ connected(s::DistalSynapses)= s.synapses.data
 # B: [Ncol] column activity
 # WC: [Ncell] current winner cells from predicted columns; add from bursting columns
 function step!(s::DistalSynapses,WC,previous::NamedTuple,A,B, params)
-  WS= get_grow__winseg_wincell!(s,WC, previous.Πₛ,A, B,previous.ovp_Mₛ)
+  WS= get_grow__winseg_wincell!(s,WC, previous.Πₛ,A, B,previous.ovp_Mₛ,params.θ_stimulus_learn)
   # Learn synapse permanences according to Hebbian learning rule
   sparse_foreach((s,seg_i,cell_i)->
                     learn_sparsesynapses!(s,seg_i,cell_i, previous.A,params.p⁺,params.p⁻),
@@ -181,9 +181,9 @@ function step!(s::DistalSynapses,WC,previous::NamedTuple,A,B, params)
 end
 # Calculate and return WinningSegments, growing new segments where needed.
 #   Update WinnerCells with bursting columns.
-function get_grow__winseg_wincell!(s,WC, Πₛ,A, B,ovp_Mₛ)
+function get_grow__winseg_wincell!(s,WC, Πₛ,A, B,ovp_Mₛ,θ_stimulus_learn)
   WS_activecol= winningSegments_activecol(s,Πₛ,A)
-  WS_burstcol= maxsegϵburstcol!(s,B,ovp_Mₛ)
+  WS_burstcol= maxsegϵburstcol!(s,B,ovp_Mₛ,θ_stimulus_learn)
   Nseg= size(s.cellSeg,2)
   WS= (@> WS_activecol padfalse(Nseg)) .| WS_burstcol
   # Update winner cells with entries from bursting columns
@@ -214,21 +214,21 @@ winningSegments_activecol(synapses,Πₛ,A)= Πₛ .& (cellXseg(synapses)'A .>0)
 # If a cell is part of a bursting column, the segment in the column with the highest
 # overlap wins.
 # Foreach bursting col, find the best matching segment or grow one if needed
-maxsegϵburstcol!(synapses,B,ovp_Mₛ)= begin
+maxsegϵburstcol!(synapses,B,ovp_Mₛ,θ_stimulus_learn)= begin
   burstingCols= findall(B)
   maxsegs= Vector{Option{Int}}(undef,length(burstingCols))
-  map!(col->bestmatch(synapses,col,ovp_Mₛ), maxsegs, burstingCols)
+  map!(col->bestmatch(synapses,col,ovp_Mₛ,θ_stimulus_learn), maxsegs, burstingCols)
   growseg!(synapses,maxsegs,findall(B))
   Nseg= size(synapses.cellSeg,2)
   @> maxsegs bitarray(Nseg)
 end
 
 # Best matching segment for column - or `nothing`
-function bestmatch(synapses,col,ovp_Mₛ)
+function bestmatch(synapses,col,ovp_Mₛ,θ_stimulus_learn)
   segs= col2seg(synapses,col)
   isempty(segs) && return nothing   # If there's no existing segments in the column
   m,i= findmax(ovp_Mₛ[segs])
-  m > 0 ? segs[i] : nothing
+  m > θ_stimulus_learn ? segs[i] : nothing
 end
 # Cell with least segments
 function leastusedcell(synapses,col)

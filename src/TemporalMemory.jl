@@ -91,7 +91,7 @@ function step!(tm::TemporalMemory, c::CellActivity)
   step!(tm.distalSynapses,WC, tm.previous.state,A,B,tm.params)
   Π,Πₛ,Mₛ,ovp_Mₛ= tm_prediction(tm.distalSynapses,B,A,tm.params)
   update_TMState!(tm.previous,A=A,Π=Π,WC=WC,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
-  return A,Π
+  return A,Π, B
 end
 
 # Given a column activation pattern (SP output), produce the TM cell activity
