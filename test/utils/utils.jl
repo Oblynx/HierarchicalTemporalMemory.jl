@@ -29,6 +29,13 @@ top_similar_sdr(sdrHist,k)= begin
   (sdrHist[:,topIdx], topIdx)
 end
 
+# Calculate prediction "mean absolute scaled error"
+# (https://en.wikipedia.org/wiki/Mean_absolute_scaled_error)
+function mase(data,prediction,predict_timesteps)
+  aligned_data= data[1+predict_timesteps:end]
+  aligned_pred= prediction[1:end-predict_timesteps]
+  mean(abs.(aligned_data .- aligned_pred)) / mean(abs.(diff(aligned_data)))
+end
 
 plot_ts_similarEncSp(t,ts,encOnly,spOnly,encANDspHistory)=
     if t>1 _plot_ts_similarEncSP(t,ts,encOnly,spOnly,encANDspHistory)

@@ -5,7 +5,7 @@ logger = ConsoleLogger(stdout, Logging.Debug);
 using BenchmarkTools
 using CSV
 using Printf
-using Plots; gr()
+#using Plots; gr()
 import Random: seed!, bitrand
 seed!(0)
 
@@ -18,17 +18,16 @@ include("utils/utils.jl")
 
 display_evaluation(t,sp,sp_activity,spDims)= println("t=$t")
 process_data!(history_enc,history_SP,history_TMout,history_TMpred,
-              history_decodedPred,
+              history_decodedPred,history_likelyPred,
               tN,data,encParams,sp,tm,decoder)=
   for t in 1:tN
     z,a,power_bucket= _process_sp(t,tN,data,encParams,sp,display_evaluation)
     A,Π= _process_tm(t,tN, tm,a)
     prediction= predict!(decoder,Π,power_bucket)
-    history_enc[:,t]= z; history_SP[:,t]= a;
-    history_TMout[:,t]= A; history_TMpred[:,t]= Π;
-    history_decodedPred[:,t]= prediction;
-    #t%08==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
-    #                                encOnlyIdx,spOnlyIdx,encANDspHistory)
+    likelyPred= reverse_simpleArithmetic(prediction,"mode",encParams.power_p)
+    history_enc[:,t]= z;    history_SP[:,t]= a
+    history_TMout[:,t]= A;  history_TMpred[:,t]= Π
+    history_decodedPred[:,t]= prediction; history_likelyPred[t]= likelyPred
   end
 
 prediction_timesteps=1
@@ -65,7 +64,11 @@ history_SP= falses(Ncol,tN)
 history_TMout=  falses(Ncell,tN)
 history_TMpred= falses(Ncell,tN)
 history_decodedPred= zeros(encParams.power_p.buckets,tN)
+history_likelyPred= zeros(tN)
 
 process_data!(history_enc,history_SP,history_TMout,history_TMpred,
-    history_decodedPred,
+    history_decodedPred,history_likelyPred,
     tN,data,encParams,sp,tm,decoder)
+
+errormetric= mase(data.power_hourly_kw,history_likelyPred,prediction_timesteps)
+display("Prediction MASE: $errormetric")
