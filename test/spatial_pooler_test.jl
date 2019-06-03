@@ -6,7 +6,7 @@ using BenchmarkTools
 using BenchmarkTools
 using CSV
 using Printf
-#using Plots; gr()
+using Plots; gr()
 import Random.seed!
 seed!(0)
 
