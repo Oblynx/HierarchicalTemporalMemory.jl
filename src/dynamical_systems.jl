@@ -82,8 +82,8 @@ struct ProximalSynapses{SynapseT<:AbstractSynapses,ConnectedT}
       return proximalSynapses
     end
 
-    SynapseT= synapseSparsity<0.08 ? SparseSynapses : DenseSynapses
-    ConnectedT= synapseSparsity<0.08 ? SparseMatrixCSC{Bool} : Matrix{Bool}
+    SynapseT= synapseSparsity<0.05 ? SparseSynapses : DenseSynapses
+    ConnectedT= synapseSparsity<0.05 ? SparseMatrixCSC{Bool} : Matrix{Bool}
     proximalSynapses= SynapseT(inputSize,spSize)
     fillin!(proximalSynapses)
     new{SynapseT,ConnectedT}(proximalSynapses, proximalSynapses .> θ_permanence_prox)

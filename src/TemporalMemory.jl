@@ -111,18 +111,18 @@ end
 # B: [N] bursting columns
 # A: [MN] TM activation at t
 # cell2seg(synapses): [MN × Nseg] cell-segment adjacency matrix
-function tm_prediction(synapses,B,A, params)
+function tm_prediction(distalSynapses,B,A, params)
   segOvp(A,D)= D'*A
   # Cell depolarization (prediction)
-  Π(Πₛ)= cellXseg(synapses)*Πₛ .> 0  # NOTE: params.θ_segment_act instead of 0
+  Π(Πₛ)= cellXseg(distalSynapses)*Πₛ .> 0  # NOTE: params.θ_segment_act instead of 0
   # OPTIMIZE: update connected at learning
-  D= connected(synapses)
+  D= connected(distalSynapses)
   # Overlap of connected segments
   connected_segOvp= segOvp(A,D)
   # Segment depolarization (prediction)
   Πₛ= connected_segOvp .> params.θ_stimulus_act
   # Sub-threshold segment stimulation sufficient for learning
-  matching_segOvp= segOvp(A,synapses.synapses.data)
+  matching_segOvp= segOvp(A,distalSynapses.synapses.data)
   Mₛ= matching_segOvp .> params.θ_stimulus_learn
   return Π(Πₛ),Πₛ,Mₛ,matching_segOvp
 end

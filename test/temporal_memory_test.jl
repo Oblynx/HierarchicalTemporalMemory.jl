@@ -5,6 +5,7 @@ logger = ConsoleLogger(stdout, Logging.Debug);
 using BenchmarkTools
 using CSV
 using Printf
+using StatsBase: median
 #using Plots; gr()
 import Random: seed!, bitrand
 seed!(0)
@@ -33,7 +34,7 @@ process_data!(tN,data,encParams,sp,tm,decoder)=
 prediction_timesteps=1
 inputDims= ((12,3,3).*25,)
 colDims= (1548,)
-cellϵcol= 16
+cellϵcol= 12
 sp= SpatialPooler(SPParams(
       map(sum,inputDims),colDims,
       input_potentialRadius=35,
@@ -48,11 +49,11 @@ sp= SpatialPooler(SPParams(
       enable_boosting=true))
 tm= TemporalMemory(TMParams(colDims,
       cellϵcol=cellϵcol,
-      θ_stimulus_act=82,
-      θ_stimulus_learn=70,
-      synapseSampleSize=30,
-      permanence⁺=0.10,
-      permanence⁻=0.14
+      θ_stimulus_act=40,
+      θ_stimulus_learn=37,
+      synapseSampleSize=25,
+      permanence⁺=0.07,
+      permanence⁻=0.13
      ))
 Ncol= prod(colDims); Ncell= Ncol*cellϵcol
 # Define input data
@@ -75,6 +76,6 @@ process_data!(tN,data,encParams,sp,tm,decoder)
 errormetric= mase(data.power_hourly_kw,history_likelyPred,prediction_timesteps)
 display("Prediction MASE: $errormetric")
 
-avg_TMout_sparsity= mapslices(x->count(x)./length(x),history_TMout,dims=1)'|>StatsBase.median
+avg_TMout_sparsity= mapslices(x->count(x)./length(x),history_TMout,dims=1)'|>median
 display(avg_TMout_sparsity)
 display(avg_burst)
