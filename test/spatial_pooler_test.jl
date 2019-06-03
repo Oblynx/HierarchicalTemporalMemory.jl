@@ -3,7 +3,6 @@ ENV["JULIA_DEBUG"] = "all"
 logger = ConsoleLogger(stdout, Logging.Debug);
 using BenchmarkTools
 
-module HTMt
 using BenchmarkTools
 using CSV
 using Printf
@@ -22,7 +21,7 @@ display_evaluation(t,sp,sp_activity,spDims)= begin
   sparsity|> display
 
   #histogram(sp.b.b)|> display
-  #histogram(sp.proximalSynapses.synapses[sp.proximalSynapses.synapses.>0]|>Vector)|> display
+  #histogram(sp.proximalSynapses.synapses[sp.proximalSynapses.synapses.>0]|>Vector, yaxis=(:log10))|> display
   #heatmap(@> sp_activity reshape(64,32))|> display
   #heatmap(@> sp.b.a_Tmean reshape(64,32))|> display
   #heatmap(sp.proximalSynapses.synapses)|> display
@@ -37,8 +36,10 @@ process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
     encOnlyIdx= setdiff(similarEncIdx, similarSpIdx)
     spOnlyIdx= setdiff(similarSpIdx, similarEncIdx)
     encANDspHistory[t]= (encANDsp= intersect(similarEncIdx,similarSpIdx), Nenc= length(similarEncIdx))
-    t%08==0 && plot_ts_similarEncSp(t,data.power_hourly_kw,
-                                    encOnlyIdx,spOnlyIdx,encANDspHistory)
+    #t%08==0 &&
+    t==tN &&
+        plot_ts_similarEncSp(t,data.power_hourly_kw,
+                             encOnlyIdx,spOnlyIdx,encANDspHistory)
   end
 
 # Define Spatial Pooler
@@ -48,13 +49,13 @@ spDims= (2048,)
 #spDims= (12,)
 sp= SpatialPooler(SPParams(
       map(sum,inputDims),spDims,
-      input_potentialRadius=35,
+      input_potentialRadius=2000,
       sp_local_sparsity=0.02,
-      θ_potential_prob_prox=0.931,
-      θ_stimulus_act=1,
-      permanence⁺= 0.09,
-      permanence⁻= 0.009,
-      β_boost=6,
+      θ_potential_prob_prox=0.8,
+      θ_stimulus_act=4,
+      permanence⁺= 0.06,
+      permanence⁻= 0.12,
+      β_boost=3,
       T_boost=500,
       enable_local_inhibit=false,
       enable_boosting=true))
@@ -71,4 +72,3 @@ total_overlap= [1; map(x->length(x.encANDsp), encANDspHistory[2:end]) ./
 #plot(total_overlap)|>display
 @printf("Mean SP performance: [%.2f,%.2f]\n",
         mean(total_overlap[170:337]),mean(total_overlap[338:end]))
-end #module
