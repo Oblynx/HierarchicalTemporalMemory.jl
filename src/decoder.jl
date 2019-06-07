@@ -20,14 +20,16 @@ predict!(classifier::SDRClassifier, Π,target::Int; enable_learning=true)=
 function predict!(classifier::SDRClassifier, Π,target::BitArray{1}; enable_learning=true)
   A(Π)= classifier.W*Π
   saturate(x)= isnan(x) ? 1 : x
-  nonlinearity(A)= saturate.(ℯ.^A ./ sum(ℯ.^A))
+  sumsat(x)= ( s= sum(x); isinf(s) ? maximum(x) : s )
+  nonlinearity(A)= saturate.(ℯ.^A ./ sumsat(ℯ.^A))
   adapt()= -classifier.α .* (classifier.history_pred[:,end] .- target)*Π[Π]'
   circshift!(history,prediction)= begin
     history[:,2:end].= history[:,1:end-1]
     history[:,1].= prediction
   end
   prediction= Π|>A|>nonlinearity
-  classifier.W[:,Π]+= adapt()
+  enable_learning &&
+      ( classifier.W[:,Π]+= adapt() )
   circshift!(classifier.history_pred,prediction)
   return prediction
 end

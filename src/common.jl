@@ -4,7 +4,7 @@ import ImageFiltering: mapwindow, imfilter!, Fill
 import Random: rand!, randsubseq!
 import LinearAlgebra: Adjoint
 import Statistics: mean
-import StatsBase: countmap
+import StatsBase: countmap, quantile
 using RandomNumbers.Xorshifts
 
 # Type aliases
