@@ -25,7 +25,6 @@ function TMParams(columnsSize::NTuple{Ncoldims,Int}=(64,64);
                   permanence⁺=0.1,
                   permanence⁻=0.08,
                   LTD_p⁻=0.001,
-                  predictedSeg⁻=0.0,
                   synapseSampleSize=20,
                   max_newSynapses=12,
                   enable_learning=true
