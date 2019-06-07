@@ -1,13 +1,13 @@
 _process_sp(t,tN,data,encParams,sp,display_evaluation=identity)= begin
   # z: encoder activation
-  z,_= encode_powerDay(data.power_hourly_kw[t], data.hour[t], data.is_weekend[t];
+  z,bucket= encode_powerDay(data.power_hourly_kw[t], data.hour[t], data.is_weekend[t];
                        encParams...)
   # a: SP activation
   a= step!(sp,z)
-
   t%(tN÷10)==0 && display_evaluation(t,sp,a,sp.params.spSize)
-  (z,a)
+  return z,a,bucket
 end
+_process_tm(t,tN, tm,a)= step!(tm,a)
 identity(a...)= a
 read_gympower()= begin
   data= CSV.read("test/test_data/gym_power_benchmark.csv", allowmissing=:auto)
@@ -29,6 +29,13 @@ top_similar_sdr(sdrHist,k)= begin
   (sdrHist[:,topIdx], topIdx)
 end
 
+# Calculate prediction "mean absolute scaled error"
+# (https://en.wikipedia.org/wiki/Mean_absolute_scaled_error)
+function mase(data,prediction,predict_timesteps)
+  aligned_data= data[1+predict_timesteps:end]
+  aligned_pred= prediction[1:end-predict_timesteps]
+  mean(abs.(aligned_data .- aligned_pred)) / mean(abs.(diff(aligned_data)))
+end
 
 plot_ts_similarEncSp(t,ts,encOnly,spOnly,encANDspHistory)=
     if t>1 _plot_ts_similarEncSP(t,ts,encOnly,spOnly,encANDspHistory)

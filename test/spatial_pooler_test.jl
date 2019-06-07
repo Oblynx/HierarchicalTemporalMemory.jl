@@ -43,29 +43,31 @@ process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
   end
 
 # Define Spatial Pooler
-inputDims= ((16*25,5*25,3*25),)
+inputDims= ((14,6,4).*25,)
 spDims= (2048,)
-#inputDims= (8,)
-#spDims= (12,)
+#inputDims= (8,8)
+#spDims= (12,12)
 sp= SpatialPooler(SPParams(
       map(sum,inputDims),spDims,
-      input_potentialRadius=2000,
-      sp_local_sparsity=0.02,
-      θ_potential_prob_prox=0.8,
+      input_potentialRadius=50,
+      sp_local_sparsity=0.03,
+      θ_potential_prob_prox=0.6,
       θ_stimulus_act=4,
-      permanence⁺= 0.06,
+      permanence⁺= 0.07,
       permanence⁻= 0.12,
       β_boost=3,
-      T_boost=500,
+      T_boost=400,
       enable_local_inhibit=false,
       enable_boosting=true))
 # Define input data
 data,tN= read_gympower()
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
-                 encoder_size=inputDims[1], w=(21,27,27))
+                 encoder_size=inputDims[1], w=(23,27,27))
+# Histories
 encHistory= falses(map(sum,inputDims)|>prod,tN)
 spHistory= falses(spDims|>prod,tN)
 encANDspHistory= Vector{NamedTuple{(:encANDsp,:Nenc),Tuple{Vector{Int},Int}}}(undef,tN)
+
 process_data!(encHistory,spHistory,encANDspHistory, tN,data,encParams,sp)
 total_overlap= [1; map(x->length(x.encANDsp), encANDspHistory[2:end]) ./
                    map(x->x.Nenc, encANDspHistory[2:end])]

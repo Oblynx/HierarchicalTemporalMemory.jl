@@ -1,9 +1,11 @@
 using SparseArrays
-using Lazy
-using ImageFiltering
-import Random: rand!
+using Lazy: @>, @>>
+import ImageFiltering: mapwindow, imfilter!, Fill
+import Random: rand!, randsubseq!
 import LinearAlgebra: Adjoint
 import Statistics: mean
+import StatsBase: countmap, quantile
+using RandomNumbers.Xorshifts
 
 # Type aliases
 const IntSP= Int32
@@ -19,6 +21,7 @@ export IntSP, UIntSP, FloatSP, SynapsePermanenceQuantization
 
 include("utils/tuple_utils.jl")
 include("utils/iter_utils.jl")
+include("utils/array_utils.jl")
 include("utils/arithmetic_utils.jl")
 include("utils/synapses.jl")
 
