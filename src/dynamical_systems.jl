@@ -174,6 +174,11 @@ function step!(s::DistalSynapses,WC,previous::NamedTuple,A,B, params)
   sparse_foreach((s,seg_i,cell_i)->
                     learn_sparsesynapses!(s,seg_i,cell_i, previous.A,params.p⁺,params.p⁻),
                  s.synapses, WS)
+  # Decay unused synapses
+  decayS= s.cellSeg'A
+  sparse_foreach((s,seg_i,cell_i)->
+                    learn_sparsesynapses!(s,seg_i,cell_i, .!previous.A,zero(permT),params.LTD_p⁻),
+                 s.synapses, decayS)
   growsynapses!(s, previous.WC,WS, previous.ovp_Mₛ,params.synapseSampleSize,params.init_permanence)
   # Update cache of connected synapses
   #@inbounds s.connected[:,WS].= s.synapses.data[:,WS] .> params.θ_permanence_prox
