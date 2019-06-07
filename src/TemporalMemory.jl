@@ -60,8 +60,9 @@ mutable struct TMState
 end
 Base.getproperty(s::TMState, name::Symbol)= name === :state ?
     getfield(s,:state) : getproperty(getfield(s,:state),name)
-update_TMState!(s::TMState; A,Π,WC,Πₛ,Mₛ,ovp_Mₛ)=
-    s.state= (A=A, Π= Π, WC= WC, Πₛ= Πₛ, Mₛ= Mₛ, ovp_Mₛ=ovp_Mₛ)
+update_TMState!(s::TMState; Nseg,A,Π,WC,Πₛ,Mₛ,ovp_Mₛ)=
+    s.state= (A=A, Π= Π, WC= WC, Πₛ= padfalse(Πₛ,Nseg),
+              Mₛ= padfalse(Mₛ,Nseg), ovp_Mₛ= padfalse(ovp_Mₛ,Nseg))
 
 struct TemporalMemory
   params::TMParams
@@ -88,9 +89,10 @@ end
 # Given a column activation pattern `c` (SP output), step the TM
 function step!(tm::TemporalMemory, c::CellActivity)
   A,B,WC= tm_activation(c,tm.previous.Π,tm.params)
-  step!(tm.distalSynapses,WC, tm.previous.state,A,B,tm.params)
   Π,Πₛ,Mₛ,ovp_Mₛ= tm_prediction(tm.distalSynapses,B,A,tm.params)
-  update_TMState!(tm.previous,A=A,Π=Π,WC=WC,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
+  step!(tm.distalSynapses,WC, tm.previous.state,A,B,tm.params)
+  update_TMState!(tm.previous,Nseg=size(tm.distalSynapses.cellSeg,2),
+                  A=A,Π=Π,WC=WC,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
   return A,Π, B
 end
 
