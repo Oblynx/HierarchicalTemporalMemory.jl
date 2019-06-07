@@ -100,8 +100,8 @@ end
 # Π: [MN] predictions at t-1
 function tm_activation(c,Π,params)
   k= params.cellϵcol; Ncol= length(c)
-  burst()= c .& .!@percolumn(any,Π, k,Ncol)
-  activate_predicted()= @percolumn(&,Π,c, k,Ncol)
+  burst()= c .& .!@percolumn(any,Π, k)
+  activate_predicted()= @percolumn(&,Π,c, k)
   activate(A_pred, B)= (A_pred .| B')|> vec
   B= burst()
   A_pred= activate_predicted()

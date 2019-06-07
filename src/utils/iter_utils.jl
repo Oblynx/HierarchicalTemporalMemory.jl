@@ -73,16 +73,16 @@ Macro to apply `f` elementwise and concatenate the results.
 - `a`: vector of size [`Ncol`*`k`], column-major
 - `b`: vectors of size `Ncol`
 """
-macro percolumn(f,a,b,k,Ncol)
-  esc(:( $f.(reshape($a,$k,$Ncol), $b') ))
+macro percolumn(f,a,b,k)
+  esc(:( $f.(reshape($a,$k,:), $b') ))
 end
 """
 @percolumn(reduce,a,k,Ncol)
 
 Macro to `reduce` `a` per column.
 """
-macro percolumn(reduce,a,k,Ncol)
-  esc(:( $reduce(reshape($a,$k,$Ncol),dims=1)|> vec ))
+macro percolumn(reduce,a,k)
+  esc(:( $reduce(reshape($a,$k,:),dims=1)|> vec ))
 end
 """
     bitarray(dims, idx)

@@ -1,6 +1,6 @@
 using SparseArrays
 using Lazy: @>, @>>
-using ImageFiltering
+import ImageFiltering: mapwindow, imfilter!, Fill
 import Random: rand!, randsubseq!
 import LinearAlgebra: Adjoint
 import Statistics: mean
