@@ -160,7 +160,7 @@ mutable struct DistalSynapses
 end
 cellXseg(s::DistalSynapses)= s.cellSeg
 col2seg(s::DistalSynapses,col::Int)= s.segCol[:,col].nzind
-col2seg(s::DistalSynapses,col)= s.segCol[:,col].rowval
+col2seg(s::DistalSynapses,col)= rowvals(s.segCol[:,col])
 col2cell(col,cellϵcol)= (col-1)*cellϵcol+1 : col*cellϵcol
 cell2col(cells,cellϵcol)= @. (cells-1) ÷ cellϵcol + 1
 connected(s::DistalSynapses)= s.connected
@@ -176,7 +176,7 @@ function step!(s::DistalSynapses,WC,previous::NamedTuple,A,B, params)
                     learn_sparsesynapses!(s,seg_i,cell_i, previous.A,params.p⁺,params.p⁻),
                  s.synapses, WS)
   # Decay unused synapses
-  decayS= s.cellSeg'A
+  decayS= padfalse(previous.Mₛ,length(WS)) .& (s.cellSeg'*(.!A))
   sparse_foreach((s,seg_i,cell_i)->
                     learn_sparsesynapses!(s,seg_i,cell_i, .!previous.A,zero(permT),params.LTD_p⁻),
                  s.synapses, decayS)
@@ -193,7 +193,7 @@ function get_grow__winseg_wincell!(s,WC, Πₛ,A, B,ovp_Mₛ,θ_stimulus_learn)
   Nseg= size(s.cellSeg,2)
   WS= (@> WS_activecol padfalse(Nseg)) .| WS_burstcol
   # Update winner cells with entries from bursting columns
-  WC[s.cellSeg*WS_burstcol.>0].= true
+  WC[cellXseg(s)*WS_burstcol.>0].= true
   return WS
 end
 growsynapses!(s, WC::CellActivity,WS, ovp_Mₛ,synapseSampleSize,init_permanence)= begin
