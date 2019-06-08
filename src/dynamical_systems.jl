@@ -105,14 +105,13 @@ function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
 end
 function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach((s,col_i,input_i)->
-                    learn_sparsesynapses!(s,col_i,input_i, z,params.p⁺,params.p⁻),
+  sparse_foreach((scol,input_i)->
+                    learn_sparsesynapses!(scol,input_i, z,params.p⁺,params.p⁻),
                  s.synapses, a)
   # Update cache of connected synapses
   @inbounds s.connected[:,a].= s.synapses.data[:,a] .> params.θ_permanence_prox
 end
-function learn_sparsesynapses!(s,col_i,input_i,z,p⁺,p⁻)
-  @inbounds synapses_activeCol= @view nonzeros(s)[col_i]
+function learn_sparsesynapses!(synapses_activeCol,input_i,z,p⁺,p⁻)
   @inbounds z_i= z[input_i]
   @inbounds synapses_activeCol.= z_i .* (synapses_activeCol .⊕ p⁺) .+
                                .!z_i .* (synapses_activeCol .⊖ p⁻)
@@ -172,13 +171,13 @@ connected(s::DistalSynapses)= s.connected
 function step!(s::DistalSynapses,WC,previous::NamedTuple,A,B, params)
   WS= get_grow__winseg_wincell!(s,WC, previous.Πₛ,A, B,previous.ovp_Mₛ,params.θ_stimulus_learn)
   # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach((s,seg_i,cell_i)->
-                    learn_sparsesynapses!(s,seg_i,cell_i, previous.A,params.p⁺,params.p⁻),
+  sparse_foreach((scol,cell_i)->
+                    learn_sparsesynapses!(scol,cell_i, previous.A,params.p⁺,params.p⁻),
                  s.synapses, WS)
   # Decay unused synapses
   decayS= padfalse(previous.Mₛ,length(WS)) .& (s.cellSeg'*(.!A))
-  sparse_foreach((s,seg_i,cell_i)->
-                    learn_sparsesynapses!(s,seg_i,cell_i, .!previous.A,zero(permT),params.LTD_p⁻),
+  sparse_foreach((scol,cell_i)->
+                    learn_sparsesynapses!(scol,cell_i, .!previous.A,zero(permT),params.LTD_p⁻),
                  s.synapses, decayS)
   growsynapses!(s, previous.WC,WS, previous.ovp_Mₛ,params.synapseSampleSize,params.init_permanence)
   # Update cache of connected synapses
