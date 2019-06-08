@@ -19,12 +19,13 @@ include("../src/TemporalMemory.jl")
 include("utils/utils.jl")
 
 plot_mase(data,pred,pred_timesteps)= begin
-  windowLength= 250
+  windowLength= 240
   errormetric= zeros(length(data)-windowLength)
   for w=1:length(data)-windowLength
     errormetric[w]= mase(data[w:w+windowLength-1], pred[w:w+windowLength-1], pred_timesteps)
   end
-  plot(errormetric)
+  plot(errormetric)|> display
+  @printf("Min 10-day MASE: %.2f\n",minimum(errormetric))
 end
 display_evaluation(t,sp,sp_activity,spDims)= println("t=$t")
 process_data!(tN,data,encParams,sp,tm,decoder)=
@@ -46,9 +47,9 @@ colDims= (1600,)
 cellϵcol= 8
 sp= SpatialPooler(SPParams(
       map(sum,inputDims),colDims,
-      input_potentialRadius=100,
-      sp_local_sparsity=0.02,
-      θ_potential_prob_prox=0.7,
+      input_potentialRadius=1000,
+      sp_local_sparsity=0.03,
+      θ_potential_prob_prox=0.85,
       θ_stimulus_act=5,
       permanence⁺= 0.20,
       permanence⁻= 0.12,
@@ -58,12 +59,12 @@ sp= SpatialPooler(SPParams(
       enable_boosting=true))
 tm= TemporalMemory(TMParams(colDims,
       cellϵcol=cellϵcol,
-      θ_stimulus_act=12,
-      θ_stimulus_learn=7,
+      θ_stimulus_act=14,
+      θ_stimulus_learn=12,
       synapseSampleSize=35,
       permanence⁺=0.24,
       permanence⁻=0.08,
-      LTD_p⁻= 0.01
+      LTD_p⁻= 0.012
      ))
 Ncol= prod(colDims); Ncell= Ncol*cellϵcol
 # Define input data
@@ -87,6 +88,6 @@ errormetric= mase(data.power_hourly_kw[400:end], history_likelyPred[400:end],pre
 @printf("Prediction MASE: %.3f\n", errormetric)
 
 avg_TMout_sparsity= mapslices(x->count(x)./length(x),history_TMout,dims=1)'|>median
+plot_mase(data.power_hourly_kw, history_likelyPred, prediction_timesteps)
 @printf("avg_TMout_sparsity: %.3f%%\n", 100*avg_TMout_sparsity)
 @printf("avg_burst: %.3f%%\n", 100*avg_burst)
-plot_mase(data.power_hourly_kw, history_likelyPred, prediction_timesteps)

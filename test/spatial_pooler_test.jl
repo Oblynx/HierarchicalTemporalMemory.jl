@@ -49,9 +49,9 @@ spDims= (2048,)
 #spDims= (12,12)
 sp= SpatialPooler(SPParams(
       map(sum,inputDims),spDims,
-      input_potentialRadius=50,
+      input_potentialRadius=1000,
       sp_local_sparsity=0.03,
-      θ_potential_prob_prox=0.6,
+      θ_potential_prob_prox=0.8,
       θ_stimulus_act=4,
       permanence⁺= 0.07,
       permanence⁻= 0.12,
