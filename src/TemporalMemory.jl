@@ -88,7 +88,7 @@ end
 # Given a column activation pattern `c` (SP output), step the TM
 function step!(tm::TemporalMemory, c::CellActivity)
   A,B,WC= tm_activation(c,tm.previous.Π,tm.params)
-  Π,Πₛ,Mₛ,ovp_Mₛ= tm_prediction(tm.distalSynapses,B,A,tm.params)
+  Π,Πₛ,Mₛ,ovp_Mₛ= tm_prediction(tm.distalSynapses,A,tm.params)
   step!(tm.distalSynapses,WC, tm.previous.state,A,B,tm.params)
   update_TMState!(tm.previous,Nseg=size(tm.distalSynapses.cellSeg,2),
                   A=A,Π=Π,WC=WC,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
@@ -112,7 +112,7 @@ end
 # B: [N] bursting columns
 # A: [MN] TM activation at t
 # cell2seg(synapses): [MN × Nseg] cell-segment adjacency matrix
-function tm_prediction(distalSynapses,B,A, params)
+function tm_prediction(distalSynapses,A, params)
   segOvp(A,D)= D'*A
   # Cell depolarization (prediction)
   Π(Πₛ)= cellXseg(distalSynapses)*Πₛ .> 0  # NOTE: params.θ_segment_act instead of 0

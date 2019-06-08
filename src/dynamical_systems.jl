@@ -33,7 +33,8 @@ function step!(s::InhibitionRadius{Nin}, a, W, params) where Nin
   #  mean(maxc .- minc .+ 1)
   #end
   #mean_receptiveFieldSpan()::Float32= mapslices(receptiveFieldSpan, W, dims=1)|> mean
-  mean_receptiveFieldSpan()= (params.input_potentialRadius*2+0.5)*(1-params.θ_potential_prob_prox)
+  mean_receptiveFieldSpan()= (params.input_potentialRadius*2+0.5)*
+                             (1-params.θ_potential_prob_prox)
   diameter= mean_receptiveFieldSpan()*s.sp_input_ratio
   s.φ= @> (diameter-1)/2 max(1)
 end
@@ -223,7 +224,7 @@ maxsegϵburstcol!(synapses,B,ovp_Mₛ,θ_stimulus_learn)= begin
   burstingCols= findall(B)
   maxsegs= Vector{Option{Int}}(undef,length(burstingCols))
   map!(col->bestmatch(synapses,col,ovp_Mₛ,θ_stimulus_learn), maxsegs, burstingCols)
-  growseg!(synapses,maxsegs,findall(B))
+  growseg!(synapses,maxsegs,burstingCols)
   Nseg= size(synapses.cellSeg,2)
   @> maxsegs bitarray(Nseg)
 end
@@ -238,7 +239,7 @@ end
 # Cell with least segments
 function leastusedcell(synapses,col)
   cellsWithSegs= cellXseg(synapses)[:,col2seg(synapses,col)].rowval|> countmap_empty
-  cellsWithoutSegs= setdiff(col2cell(col,synapses.cellϵcol), cellsWithSegs)
+  cellsWithoutSegs= setdiff(col2cell(col,synapses.cellϵcol), cellsWithSegs|> keys)
   isempty(cellsWithoutSegs) ?
       findmin(cellsWithSegs)[2] : rand(synapses.rng, cellsWithoutSegs)
 end
@@ -246,7 +247,7 @@ end
 # OPTIMIZE add many segments together for efficiency?
 function growseg!(synapses::DistalSynapses,maxsegs::Vector{Option{Int}},burstingcolidx)
   # Ref() to cancel broadcasting for the synapses
-  cellsToGrow= leastusedcell.(Ref(synapses), burstingcolidx[isnothing.(maxsegs)])
+  cellsToGrow= map(col-> leastusedcell(synapses,col), burstingcolidx[isnothing.(maxsegs)])
   columnsToGrow= cell2col(cellsToGrow,synapses.cellϵcol)
   Ncell= size(synapses.synapses,1); Ncol= size(synapses.segCol,2)
   Nseg_before= size(synapses.cellSeg,2)
