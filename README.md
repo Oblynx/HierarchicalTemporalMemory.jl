@@ -19,6 +19,9 @@ Currently implemented algorithms:
 - [Spatial Pooler](https://www.frontiersin.org/articles/10.3389/fncom.2017.00111/full)
 - [Temporal Memory](https://www.mitpressjournals.org/doi/full/10.1162/NECO_a_00893) (section 3.3)
 
+
+**Note**  both implementations are currently in the process of simplification. _Expect half the code to go._
+
 ## Design sources
 
 The sources for this implementation are primarily the published papers for the [Spatial Pooler](https://www.frontiersin.org/articles/10.3389/fncom.2017.00111/full)
