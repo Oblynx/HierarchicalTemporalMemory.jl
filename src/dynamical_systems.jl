@@ -245,14 +245,13 @@ end
 
 # OPTIMIZE add many segments together for efficiency?
 function growseg!(synapses::DistalSynapses,maxsegs::Vector{Option{Int}},burstingcolidx)
-  # Ref() to cancel broadcasting for the synapses
   cellsToGrow= map(col-> leastusedcell(synapses,col), burstingcolidx[isnothing.(maxsegs)])
   columnsToGrow= cell2col(cellsToGrow,synapses.cellϵcol)
   Ncell= size(synapses.synapses,1); Ncol= size(synapses.segCol,2)
   Nseg_before= size(synapses.cellSeg,2)
   Nseggrow= length(cellsToGrow)  # grow 1 seg per cell
   _grow_synapse_matrices!(synapses::DistalSynapses,columnsToGrow,cellsToGrow,Nseggrow)
-  # Replace in maxsegs, `nothing` with something
+  # Replace in maxsegs, `nothing` with something :-)
   maxsegs[isnothing.(maxsegs)].= Nseg_before.+(1:Nseggrow)
 end
 function _grow_synapse_matrices!(synapses::DistalSynapses,columnsToGrow,cellsToGrow,Nseggrow)
@@ -262,4 +261,5 @@ function _grow_synapse_matrices!(synapses::DistalSynapses,columnsToGrow,cellsToG
   growseg!(synapses.synapses, Nseggrow)
 end
 
+# [Dict] Count the frequency of occurence for each element in x
 countmap_empty(x)= isempty(x) ? x : countmap(x)
