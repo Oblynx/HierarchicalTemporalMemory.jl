@@ -6,20 +6,20 @@ struct TMParams{Ncoldims}
   cellϵcol::Int
   Ncol::Int
   Ncell::Int
-  θ_stimulus_act::Int
+  θ_stimulus_activate::Int
   θ_stimulus_learn::Int
-  θ_permanence_dist::SynapsePermanenceQuantization
-  init_permanence::SynapsePermanenceQuantization
-  p⁺::SynapsePermanenceQuantization
-  p⁻::SynapsePermanenceQuantization
-  LTD_p⁻::SynapsePermanenceQuantization
+  θ_permanence_dist::𝕊𝕢
+  init_permanence::𝕊𝕢
+  p⁺::𝕊𝕢
+  p⁻::𝕊𝕢
+  LTD_p⁻::𝕊𝕢
   synapseSampleSize::Int
   enable_learning::Bool
 end
 function TMParams(columnsSize::NTuple{Ncoldims,Int}=(64,64);
                   cellϵcol=16, Ncell=0,
                   θ_permanence_dist=0.5,
-                  θ_stimulus_act=8,
+                  θ_stimulus_activate=8,
                   θ_stimulus_learn=6,
                   init_permanence=0.4,
                   permanence⁺=0.1,
@@ -36,16 +36,16 @@ function TMParams(columnsSize::NTuple{Ncoldims,Int}=(64,64);
     cellϵcol= (Ncell / Ncol)|> round
   else error("[TMParams]: Either Ncell or cellϵcol (cells per column) must be provided")
   end
-  θ_stimulus_learn > θ_stimulus_act && error("[TMParams]: Stimulus threshold for
+  θ_stimulus_learn > θ_stimulus_activate && error("[TMParams]: Stimulus threshold for
                                               learning can't be larger than activation")
-  θ_permanence_dist= @>> θ_permanence_dist*typemax(SynapsePermanenceQuantization) round(SynapsePermanenceQuantization)
-  init_permanence= @>> init_permanence*typemax(SynapsePermanenceQuantization) round(SynapsePermanenceQuantization)
-  p⁺= round(SynapsePermanenceQuantization, permanence⁺*typemax(SynapsePermanenceQuantization))
-  p⁻= round(SynapsePermanenceQuantization, permanence⁻*typemax(SynapsePermanenceQuantization))
-  LTD_p⁻= round(SynapsePermanenceQuantization, LTD_p⁻*typemax(SynapsePermanenceQuantization))
+  θ_permanence_dist= @>> θ_permanence_dist*typemax(𝕊𝕢) round(𝕊𝕢)
+  init_permanence= @>> init_permanence*typemax(𝕊𝕢) round(𝕊𝕢)
+  p⁺= round(𝕊𝕢, permanence⁺*typemax(𝕊𝕢))
+  p⁻= round(𝕊𝕢, permanence⁻*typemax(𝕊𝕢))
+  LTD_p⁻= round(𝕊𝕢, LTD_p⁻*typemax(𝕊𝕢))
 
   TMParams{Ncoldims}(columnsSize,cellϵcol,Ncol,Ncell,
-                 θ_stimulus_act,θ_stimulus_learn,θ_permanence_dist,
+                 θ_stimulus_activate,θ_stimulus_learn,θ_permanence_dist,
                  init_permanence,p⁺,p⁻,LTD_p⁻,synapseSampleSize,
                  enable_learning)
 end
@@ -123,7 +123,7 @@ function tm_prediction(distalSynapses,A, params)
   # Segment depolarization (prediction)
   Πₛ= connected_segOvp .> params.θ_stimulus_act
   # Sub-threshold segment stimulation sufficient for learning
-  matching_segOvp= segOvp(A,distalSynapses.synapses.data)
+  matching_segOvp= segOvp(A,distalSynapses.synapses)
   Mₛ= matching_segOvp .> params.θ_stimulus_learn
   return Π(Πₛ),Πₛ,Mₛ,matching_segOvp
 end
