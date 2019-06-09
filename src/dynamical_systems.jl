@@ -34,7 +34,7 @@ function step!(s::InhibitionRadius{Nin}, a, W, params) where Nin
   #end
   #mean_receptiveFieldSpan()::Float32= mapslices(receptiveFieldSpan, W, dims=1)|> mean
   mean_receptiveFieldSpan()= (params.input_potentialRadius*2+0.5)*
-                             (1-params.θ_potential_prob_prox)
+                             (1-params.θ_potential_prob)
   diameter= mean_receptiveFieldSpan()*s.sp_input_ratio
   s.φ= @> (diameter-1)/2 max(1)
 end
@@ -42,8 +42,7 @@ end
 
 # ## Proximal Synapses
 
-const permT= SynapsePermanenceQuantization
-struct ProximalSynapses{SynapseT<:AbstractSynapses,ConnectedT}
+struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
   synapses::SynapseT
   connected::ConnectedT
 
@@ -53,41 +52,45 @@ struct ProximalSynapses{SynapseT<:AbstractSynapses,ConnectedT}
   Initialize potential synapses. For every column:
   - find its center in the input space
   - for every input in hypercube, draw rand Z
-    - If < 1-θ_potential_prob_prox
+    - If < 1-θ_potential_prob
      - Init perm: rescale Z from [0..1-θ] -> [0..1]: Z/(1-θ)
   """
-  function ProximalSynapses(inputSize,spSize,synapseSparsity,input_potentialRadius,
-        θ_potential_prob_prox,θ_permanence_prox)
-    spColumns()= CartesianIndices(spSize)
+  function ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
+        θ_potential_prob,θ_permanence)
     # Map column coordinates to their center in the input space. Column coords FROM 1 !!!
-    xᶜ(yᵢ)= floor.(UIntSP, (yᵢ.-1) .* (inputSize./spSize)) .+1
-    xᵢ(xᶜ)= hypercube(xᶜ,input_potentialRadius, inputSize)
+    xᶜ(yᵢ)= floor.(Int, (yᵢ.-1) .* (szᵢₙ./szₛₚ)) .+1
+    xᵢ(xᶜ)= Hypercube(xᶜ,γ,szᵢₙ)
+    θ_effective()= floor(𝕊𝕢, (1 - θ_potential_prob)*typemax(𝕊𝕢))
+    out_lattice()= (c.I for c in CartesianIndices(szₛₚ))
 
     # Draw permanences from uniform distribution. Connections aren't very sparse (40%),
     #   so prefer a dense matrix
-    permanences(::Type{SparseSynapses},xᵢ)= sprand(permT,length(xᵢ),1, 1-θ_potential_prob_prox)
+    permanences(::Type{SparseSynapses},xᵢ)= sprand(𝕊𝕢,length(xᵢ),1, 1-θ_potential_prob)
     permanences(::Type{DenseSynapses}, xᵢ)= begin
-      p= rand(permT(0):typemax(permT),length(xᵢ),1)
-      effective_θ= floor(permT, (1-θ_potential_prob_prox)*typemax(permT))
-      p0= p .> effective_θ; pScale= p .< effective_θ
-      fill!(view(p,p0), permT(0))
-      rand!(view(p,pScale), permT(0):typemax(permT))
+      # Decide randomly if yᵢ ⟷ xᵢ will connect
+      p= rand(𝕊𝕢range,length(xᵢ))
+      p0= p .> θ_effective(); pScale= p .< θ_effective()
+      fill!(view(p,p0), 𝕊𝕢(0))
+      # Draw permanences from uniform distribution in 𝕊𝕢
+      rand!(view(p,pScale), 𝕊𝕢range)
       return p
     end
-    fillin!(proximalSynapses)= begin
-      for yᵢ in spColumns()
-        yᵢ= yᵢ.I
-        xi= xᵢ(xᶜ(yᵢ))
-        proximalSynapses[xi, yᵢ]= permanences(SynapseT,xi)
+    fillin_permanences()= begin
+      Dₚ= zeros(𝕊𝕢, prod(szᵢₙ),prod(szₛₚ))
+      foreach(out_lattice()) do yᵢ
+        # Linear indices from hypercube
+        x= @>> yᵢ xᶜ xᵢ collect map(x->c2lᵢₙ[x...])
+        Dₚ[x, c2lₛₚ[yᵢ...]]= permanences(SynapseT, @> yᵢ xᶜ xᵢ)
       end
-      return proximalSynapses
+      return Dₚ
     end
+    c2lᵢₙ= LinearIndices(szᵢₙ)
+    c2lₛₚ= LinearIndices(szₛₚ)
 
     SynapseT= synapseSparsity<0.05 ? SparseSynapses : DenseSynapses
     ConnectedT= synapseSparsity<0.05 ? SparseMatrixCSC{Bool} : Matrix{Bool}
-    proximalSynapses= SynapseT(inputSize,spSize)
-    fillin!(proximalSynapses)
-    new{SynapseT,ConnectedT}(proximalSynapses, proximalSynapses .> θ_permanence_prox)
+    proximalSynapses= fillin_permanences()
+    new{SynapseT,ConnectedT}(proximalSynapses, proximalSynapses .> θ_permanence)
   end
 end
 connected(s::ProximalSynapses)= s.connected
@@ -101,7 +104,7 @@ function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
   @inbounds @. (synapses_activeSP= activeConn * (synapses_activeSP ⊕ params.p⁺) +
       inactiveConn * (synapses_activeSP ⊖ params.p⁻))
   # Update cache of connected synapses
-  @inbounds s.connected[:,vec(a)].= synapses_activeSP .> params.θ_permanence_prox
+  @inbounds s.connected[:,vec(a)].= synapses_activeSP .> params.θ_permanence
 end
 function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   # Learn synapse permanences according to Hebbian learning rule
@@ -109,7 +112,7 @@ function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
                     learn_sparsesynapses!(scol,input_i, z,params.p⁺,params.p⁻),
                  s.synapses, a)
   # Update cache of connected synapses
-  @inbounds s.connected[:,a].= s.synapses.data[:,a] .> params.θ_permanence_prox
+  @inbounds s.connected[:,a].= s.synapses[:,a] .> params.θ_permanence
 end
 function learn_sparsesynapses!(synapses_activeCol,input_i,z,p⁺,p⁻)
   @inbounds z_i= z[input_i]
@@ -150,12 +153,11 @@ boostfun(a_Tmean,a_Nmean,β)= ℯ^(-β*(a_Tmean-a_Nmean))
 # (assume the same learning rule governs all types of distal synapses)
 
 mutable struct DistalSynapses
-  synapses::SparseSynapses              # Ncell x Nseg
+  synapses::SparseSynapses               # Ncell x Nseg
   connected::SparseMatrixCSC{Bool,Int}
-  cellSeg::SparseMatrixCSC{Bool,Int}    # Ncell x Nseg
-  segCol::SparseMatrixCSC{Bool,Int}     # Nseg x Ncol
+  cellSeg::SparseMatrixCSC{Bool,Int}     # Ncell x Nseg
+  segCol::SparseMatrixCSC{Bool,Int}      # Nseg x Ncol
   cellϵcol::Int
-  rng::Xoroshiro128Plus
 end
 cellXseg(s::DistalSynapses)= s.cellSeg
 col2seg(s::DistalSynapses,col::Int)= s.segCol[:,col].nzind
@@ -177,12 +179,12 @@ function step!(s::DistalSynapses,WC,previous::NamedTuple,A,B, params)
   # Decay unused synapses
   decayS= padfalse(previous.Mₛ,length(WS)) .& (s.cellSeg'*(.!A))
   sparse_foreach((scol,cell_i)->
-                    learn_sparsesynapses!(scol,cell_i, .!previous.A,zero(permT),params.LTD_p⁻),
+                    learn_sparsesynapses!(scol,cell_i, .!previous.A,zero(𝕊𝕢),params.LTD_p⁻),
                  s.synapses, decayS)
   growsynapses!(s, previous.WC,WS, previous.ovp_Mₛ,params.synapseSampleSize,params.init_permanence)
   # Update cache of connected synapses
-  #@inbounds s.connected[:,WS].= s.synapses.data[:,WS] .> params.θ_permanence_prox
-  s.connected= s.synapses.data .> params.θ_permanence_dist
+  #@inbounds s.connected[:,WS].= s.synapses[:,WS] .> params.θ_permanence
+  s.connected= s.synapses .> params.θ_permanence_dist
 end
 # Calculate and return WinningSegments, growing new segments where needed.
 #   Update WinnerCells with bursting columns.
@@ -207,9 +209,9 @@ function _growsynapses!(s, WC,WS, ovp_Mₛ,synapseSampleSize,init_permanence)
 
   foreach(Truesof(WS), psampling_newsyn) do seg_i, p
     # Bernoulli sampling from WC with mean sample size == Nnewsyn
-    randsubseq!(s.rng,selectedWC,WC,p)
+    randsubseq!(selectedWC,WC,p)
     # Grow new synapses (percolumn manual | setindex percolumn | setindex WC,WS,sparse_V)
-    s.synapses.data[selectedWC, seg_i].= init_permanence
+    s.synapses[selectedWC, seg_i].= init_permanence
   end
 end
 
@@ -224,7 +226,7 @@ maxsegϵburstcol!(synapses,B,ovp_Mₛ,θ_stimulus_learn)= begin
   maxsegs= Vector{Option{Int}}(undef,length(burstingCols))
   map!(col->bestmatch(synapses,col,ovp_Mₛ,θ_stimulus_learn), maxsegs, burstingCols)
   growseg!(synapses,maxsegs,burstingCols)
-  Nseg= size(synapses.cellSeg,2)
+  Nseg= size(cellXseg(synapses),2)
   @> maxsegs bitarray(Nseg)
 end
 
@@ -240,7 +242,7 @@ function leastusedcell(synapses,col)
   cellsWithSegs= cellXseg(synapses)[:,col2seg(synapses,col)].rowval|> countmap_empty
   cellsWithoutSegs= setdiff(col2cell(col,synapses.cellϵcol), cellsWithSegs|> keys)
   isempty(cellsWithoutSegs) ?
-      findmin(cellsWithSegs)[2] : rand(synapses.rng, cellsWithoutSegs)
+      findmin(cellsWithSegs)[2] : rand(cellsWithoutSegs)
 end
 
 # OPTIMIZE add many segments together for efficiency?
@@ -248,9 +250,9 @@ function growseg!(synapses::DistalSynapses,maxsegs::Vector{Option{Int}},bursting
   cellsToGrow= map(col-> leastusedcell(synapses,col), burstingcolidx[isnothing.(maxsegs)])
   columnsToGrow= cell2col(cellsToGrow,synapses.cellϵcol)
   Ncell= size(synapses.synapses,1); Ncol= size(synapses.segCol,2)
-  Nseg_before= size(synapses.cellSeg,2)
+  Nseg_before= size(cellXseg(synapses),2)
   Nseggrow= length(cellsToGrow)  # grow 1 seg per cell
-  _grow_synapse_matrices!(synapses::DistalSynapses,columnsToGrow,cellsToGrow,Nseggrow)
+  _grow_synapse_matrices!(synapses,columnsToGrow,cellsToGrow,Nseggrow)
   # Replace in maxsegs, `nothing` with something :-)
   maxsegs[isnothing.(maxsegs)].= Nseg_before.+(1:Nseggrow)
 end
@@ -258,7 +260,7 @@ function _grow_synapse_matrices!(synapses::DistalSynapses,columnsToGrow,cellsToG
   synapses.segCol= vcat!!(synapses.segCol, columnsToGrow, trues(Nseggrow))
   synapses.cellSeg= hcat!!(synapses.cellSeg, cellsToGrow,trues(Nseggrow))
   synapses.connected= hcat!!(synapses.connected, cellsToGrow,falses(Nseggrow))
-  growseg!(synapses.synapses, Nseggrow)
+  synapses.synapses= hcat!!(synapses.synapses, Nseggrow)
 end
 
 # [Dict] Count the frequency of occurence for each element in x

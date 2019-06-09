@@ -22,7 +22,7 @@ a= sp_activation(sp.proximalSynapses,sp.φ.φ,sp.b,z,colDims,sp.params)
 #Π= bitrand(cellϵcol*prod(colDims))
 tm= TMm.TemporalMemory(TMm.TMParams(colDims,
         cellϵcol=cellϵcol,
-        θ_stimulus_act=1,
+        θ_stimulus_activate=1,
         θ_stimulus_learn=0
       ),Nseg_init= prod(colDims)*cellϵcol)
 
