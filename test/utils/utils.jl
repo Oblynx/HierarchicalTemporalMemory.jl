@@ -42,7 +42,7 @@ plot_ts_similarEncSp(t,ts,encOnly,spOnly,encANDspHistory)=
     end
 function _plot_ts_similarEncSP(t,ts,encOnly,spOnly,encANDspHistory)
   graph_ts()= begin
-    graph_ts= plot(ts, label="power", dpi=192, ylims=(0.9minimum(ts),1.05maximum(ts)),
+    graph_ts= plot(ts, label="power", ylims=(0.9minimum(ts),1.05maximum(ts)),
               xlims=(1,1.3length(ts)))
     scatter!(graph_ts, encOnly, ts[encOnly], label="encoding only")
     scatter!(graph_ts, spOnly, ts[spOnly], label="SP only")
@@ -53,8 +53,7 @@ function _plot_ts_similarEncSP(t,ts,encOnly,spOnly,encANDspHistory)
     return graph_ts
   end
   graph_ovp(overlapFraction)= begin
-    graph_ovp= plot(1:t,overlapFraction*100, label="", linestyle=:dash, shape=:circle,
-        msize=3, mcolor=:red, mscolor=:green, dpi=192,
+    graph_ovp= plot(1:t,overlapFraction*100, label="", linestyle=:dash,
         ylabel="overlap%",ylims=(-1,102),xlims=(1,1.3length(ts)))
     title!(graph_ovp, "Percentage of overlapping encoder and SP SDRs", titlefont=font(10))
     return graph_ovp

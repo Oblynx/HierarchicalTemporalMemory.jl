@@ -24,7 +24,13 @@ plot_mase(data,pred,pred_timesteps)= begin
   for w=1:length(data)-windowLength
     errormetric[w]= mase(data[w:w+windowLength-1], pred[w:w+windowLength-1], pred_timesteps)
   end
-  plot(errormetric)|> display
+  crit_t1= 1:500; crit_t2= 1640:2000
+  plot(plot(errormetric, label="10-day MASE"),
+       plot([data pred], label=["timeseries","prediction"], legend=:none),
+       plot(plot(crit_t1, [data[crit_t1] pred[crit_t1]], legend= :none),
+            plot(crit_t2, [data[crit_t2] pred[crit_t2]], legend= :none),
+            layout= (1,2)),
+       layout= (3,1))|> display
   @printf("Min 10-day MASE: %.2f\n",minimum(errormetric))
 end
 display_evaluation(t,sp,sp_activity,spDims)= println("t=$t")
