@@ -49,30 +49,32 @@ process_data!(tN,data,encParams,sp,tm,decoder)=
 
 prediction_timesteps=1
 inputDims= ((15,6,3).*25,)
-colDims= (1600,)
+spDims= (1600,)
 cellϵcol= 8
 sp= SpatialPooler(SPParams(
-      map(sum,inputDims),colDims,
-      input_potentialRadius=1000,
-      sp_local_sparsity=0.03,
+      szᵢₙ= map(sum,inputDims), szₛₚ=spDims,
+      γ=1000,
+      s=0.03,
       θ_potential_prob=0.85,
       θ_stimulus_activate=5,
-      permanence⁺= 0.20,
-      permanence⁻= 0.12,
-      β_boost=3,
-      T_boost=350,
+      p⁺_01= 0.20,
+      p⁻_01= 0.12,
+      β=3,
+      Tboost=350,
       enable_local_inhibit=false,
       enable_boosting=true))
-tm= TemporalMemory(TMParams(colDims,
+tm= TemporalMemory(TMParams(
+      Nc=prod(spDims),
       cellϵcol=cellϵcol,
       θ_stimulus_activate=14,
       θ_stimulus_learn=12,
       synapseSampleSize=35,
-      permanence⁺=0.24,
-      permanence⁻=0.08,
-      LTD_p⁻= 0.012
+      p⁺_01=0.24,
+      p⁻_01=0.08,
+      LTD_p⁻_01= 0.012
      ))
-Ncol= prod(colDims); Ncell= Ncol*cellϵcol
+
+Ncol= prod(spDims); Ncell= Ncol*cellϵcol
 # Define input data
 data,tN= read_gympower()
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,

@@ -1,54 +1,6 @@
 include("common.jl")
+include("parameters.jl")
 include("dynamical_systems.jl")
-
-struct TMParams{Ncoldims}
-  columnsSize::NTuple{Ncoldims,Int}
-  cellϵcol::Int
-  Ncol::Int
-  Ncell::Int
-  θ_stimulus_activate::Int
-  θ_stimulus_learn::Int
-  θ_permanence_dist::𝕊𝕢
-  init_permanence::𝕊𝕢
-  p⁺::𝕊𝕢
-  p⁻::𝕊𝕢
-  LTD_p⁻::𝕊𝕢
-  synapseSampleSize::Int
-  enable_learning::Bool
-end
-function TMParams(columnsSize::NTuple{Ncoldims,Int}=(64,64);
-                  cellϵcol=16, Ncell=0,
-                  θ_permanence_dist=0.5,
-                  θ_stimulus_activate=8,
-                  θ_stimulus_learn=6,
-                  init_permanence=0.4,
-                  permanence⁺=0.1,
-                  permanence⁻=0.08,
-                  LTD_p⁻=0.001,
-                  synapseSampleSize=20,
-                  max_newSynapses=12,
-                  enable_learning=true
-                 ) where Ncoldims
-  Ncol= prod(columnsSize)
-  if Ncell==0 && cellϵcol>0
-    Ncell= prod(columnsSize) * cellϵcol
-  elseif Ncell>0
-    cellϵcol= (Ncell / Ncol)|> round
-  else error("[TMParams]: Either Ncell or cellϵcol (cells per column) must be provided")
-  end
-  θ_stimulus_learn > θ_stimulus_activate && error("[TMParams]: Stimulus threshold for
-                                              learning can't be larger than activation")
-  θ_permanence_dist= @>> θ_permanence_dist*typemax(𝕊𝕢) round(𝕊𝕢)
-  init_permanence= @>> init_permanence*typemax(𝕊𝕢) round(𝕊𝕢)
-  p⁺= round(𝕊𝕢, permanence⁺*typemax(𝕊𝕢))
-  p⁻= round(𝕊𝕢, permanence⁻*typemax(𝕊𝕢))
-  LTD_p⁻= round(𝕊𝕢, LTD_p⁻*typemax(𝕊𝕢))
-
-  TMParams{Ncoldims}(columnsSize,cellϵcol,Ncol,Ncell,
-                 θ_stimulus_activate,θ_stimulus_learn,θ_permanence_dist,
-                 init_permanence,p⁺,p⁻,LTD_p⁻,synapseSampleSize,
-                 enable_learning)
-end
 
 mutable struct TMState
   state::NamedTuple{
@@ -68,17 +20,18 @@ struct TemporalMemory
   distalSynapses::DistalSynapses
   previous::TMState
 
-  function TemporalMemory(params::TMParams= TMParams();
-                          Nseg_init=0)
-    # TODO: init TM
-    distalSynapses= DistalSynapses(
-        SparseSynapses((params.Ncell,),(Nseg_init,), (T,n,s)->spzeros(T,n,s)),
-        spzeros(Bool,params.Ncell,Nseg_init),
-        spzeros(Bool,params.Ncell,Nseg_init),
-        spzeros(Bool,Nseg_init,params.Ncol),
-        params.cellϵcol,Xoroshiro128Plus(1))
-    new(params,distalSynapses,TMState((
-          A=falses(params.Ncell), Π=falses(params.Ncell), WC=falses(params.Ncell),
+  function TemporalMemory(params::TMParams)
+    @unpack Nₙ, Nc, cellϵcol = params
+    Nseg_init= 0
+    new(params,
+        DistalSynapses(
+          SparseSynapses(spzeros(𝕊𝕢,Nₙ,Nseg_init)),
+          spzeros(Bool,Nₙ,Nseg_init),
+          spzeros(Bool,Nₙ,Nseg_init),
+          spzeros(Bool,Nseg_init,Nc),
+          cellϵcol),
+        TMState((
+          A=falses(Nₙ), Π=falses(Nₙ), WC=falses(Nₙ),
           Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init),
           ovp_Mₛ=zeros(Nseg_init)
         )))
@@ -113,6 +66,7 @@ end
 # A: [MN] TM activation at t
 # cell2seg(synapses): [MN × Nseg] cell-segment adjacency matrix
 function tm_prediction(distalSynapses,A, params)
+  @unpack θ_stimulus_activate, θ_stimulus_learn = params
   segOvp(A,D)= D'*A
   # Cell depolarization (prediction)
   Π(Πₛ)= cellXseg(distalSynapses)*Πₛ .> 0  # NOTE: params.θ_segment_act instead of 0
@@ -121,9 +75,9 @@ function tm_prediction(distalSynapses,A, params)
   # Overlap of connected segments
   connected_segOvp= segOvp(A,D)
   # Segment depolarization (prediction)
-  Πₛ= connected_segOvp .> params.θ_stimulus_act
+  Πₛ= connected_segOvp .> θ_stimulus_activate
   # Sub-threshold segment stimulation sufficient for learning
   matching_segOvp= segOvp(A,distalSynapses.synapses)
-  Mₛ= matching_segOvp .> params.θ_stimulus_learn
+  Mₛ= matching_segOvp .> θ_stimulus_learn
   return Π(Πₛ),Πₛ,Mₛ,matching_segOvp
 end
