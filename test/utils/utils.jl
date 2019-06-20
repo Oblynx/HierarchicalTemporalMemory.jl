@@ -9,8 +9,8 @@ _process_sp(t,tN,data,encParams,sp,display_evaluation=identity)= begin
 end
 _process_tm(t,tN, tm,a)= step!(tm,a)
 identity(a...)= a
-read_gympower()= begin
-  data= CSV.read("test/test_data/gym_power_benchmark.csv", allowmissing=:auto)
+read_gympower(dataset_filename= "test/test_data/gym_power_benchmark.csv")= begin
+  data= CSV.read(dataset_filename, allowmissing=:auto)
   ((power_hourly_kw= data.power_hourly_kw,
     hour= data.hour,
     is_weekend= data.is_weekend

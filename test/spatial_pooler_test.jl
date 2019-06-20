@@ -60,7 +60,7 @@ sp= SpatialPooler(SPParams(
       enable_local_inhibit=false,
       enable_boosting=true))
 # Define input data
-data,tN= read_gympower()
+data,tN= read_gympower("test/test_data/gym_power_benchmark-extended.csv")
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
                  encoder_size=inputDims[1], w=(23,27,27))
 # Histories
