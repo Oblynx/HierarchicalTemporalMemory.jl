@@ -1,5 +1,5 @@
 include("common.jl")
-include("parameters.jl")
+include("algorithm_parameters.jl")
 include("dynamical_systems.jl")
 
 mutable struct TMState
