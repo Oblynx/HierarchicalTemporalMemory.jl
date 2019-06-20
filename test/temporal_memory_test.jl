@@ -24,7 +24,7 @@ plot_mase(data,pred,pred_timesteps)= begin
   for w=1:length(data)-windowLength
     errormetric[w]= mase(data[w:w+windowLength-1], pred[w:w+windowLength-1], pred_timesteps)
   end
-  crit_t1= 1:500; crit_t2= 1640:2000
+  crit_t1= 1:500; crit_t2= 3000:3200
   plot(plot(errormetric, label="10-day MASE"),
        plot([data pred], label=["timeseries","prediction"], legend=:none),
        plot(plot(crit_t1, [data[crit_t1] pred[crit_t1]], legend= :none),
@@ -76,7 +76,7 @@ tm= TemporalMemory(TMParams(
 
 Ncol= prod(spDims); Ncell= Ncol*cellϵcol
 # Define input data
-data,tN= read_gympower()
+data,tN= read_gympower("test/test_data/gym_power_benchmark-extended.csv")
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
                  encoder_size=inputDims[1], w=(34,35,35))
 decoder= SDRClassifier(Ncell,encParams.power_p.buckets,
