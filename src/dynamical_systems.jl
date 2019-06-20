@@ -33,7 +33,7 @@ function step!(s::InhibitionRadius{Nin}, a, W, params) where Nin
   #  mean(maxc .- minc .+ 1)
   #end
   #mean_receptiveFieldSpan()::Float32= mapslices(receptiveFieldSpan, W, dims=1)|> mean
-  mean_receptiveFieldSpan()= (params.input_potentialRadius*2+0.5)*
+  mean_receptiveFieldSpan()= (params.γ*2+0.5)*
                              (1-params.θ_potential_prob)
   diameter= mean_receptiveFieldSpan()*s.sp_input_ratio
   s.φ= @> (diameter-1)/2 max(1)
