@@ -4,7 +4,7 @@ using Lazy: @>, @>>
 import ImageFiltering: mapwindow, imfilter!, Fill
 import Random: rand!, randsubseq!
 import LinearAlgebra: Adjoint
-import Statistics: mean
+import Statistics: mean, median
 import StatsBase: countmap, quantile
 
 # Type aliases

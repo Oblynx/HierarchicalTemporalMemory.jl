@@ -1,6 +1,6 @@
 include("common.jl")
 include("utils/topology.jl")
-include("parameters.jl")
+include("algorithm_parameters.jl")
 include("dynamical_systems.jl")
 
 struct SpatialPooler{Nin,Nsp} #<: Region
