@@ -4,7 +4,7 @@ _process_sp(t,tN,data,encParams,sp,display_evaluation=identity)= begin
                        encParams...)
   # a: SP activation
   a= step!(sp,z)
-  t%(tN÷10)==0 && display_evaluation(t,sp,a,sp.params.spSize)
+  t%(tN÷10)==0 && display_evaluation(t,sp,a,sp.params.szₛₚ)
   return z,a,bucket
 end
 _process_tm(t,tN, tm,a)= step!(tm,a)
