@@ -5,38 +5,36 @@ The inhibition radius of a Spatial Pooler's columns is a dynamical system that e
 under the influence of other elements of the Spatial Pooler. It provides an init
 (constructor) and a step! function.
 """
-mutable struct InhibitionRadius{Nin} <:AbstractFloat
+mutable struct InhibitionRadius <:AbstractFloat
   φ::Float32
-  sp_input_ratio::Float32
-  ci::CartesianIndices{Nin}
-  InhibitionRadius(x,inputSize::NTuple{Nin,Int},sp_input_ratio,enable_local_inhibit=true) where Nin=
+  InhibitionRadius(γ,θ_potential_prob,szᵢₙ,szₛₚ,enable_local_inhibit=true)=
       enable_local_inhibit ?
-        (x>=0 ? new{Nin}(x * mean(sp_input_ratio), mean(sp_input_ratio),
-                          CartesianIndices(map(d->1:d, inputSize))) :
-          error("Inhibition radius >0")) :
-        new{0}(maximum(sp_input_ratio.*inputSize)+1)
+        new(simple_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ)) :
+        new(maximum(szₛₚ)+1)
 end
-Base.convert(::Type{InhibitionRadius}, x::InhibitionRadius)= x
-Base.convert(::Type{N}, x::InhibitionRadius) where {N<:Number}= convert(N,x.φ)
 Base.promote_rule(::Type{InhibitionRadius}, ::Type{T}) where {T<:Number}= Float32
 Float32(x::InhibitionRadius)= x.φ
 Int(x::InhibitionRadius)= round(Int,x.φ)
 
-step!(s::InhibitionRadius{0}, a,W,params)= nothing
-function step!(s::InhibitionRadius{Nin}, a, W, params) where Nin
-  # This implementation follows the SP paper description and NUPIC, but seems too complex
-  #   for no reason. Replace with a static inhibition radius instead
-  #receptiveFieldSpan(colinputs)::Float32= begin
-  #  connectedInputCoords= @>> colinputs findall getindex(s.ci)
-  #  maxc= [mapreduce(c->c.I[d], max, connectedInputCoords) for d in 1:Nin]
-  #  minc= [mapreduce(c->c.I[d], min, connectedInputCoords) for d in 1:Nin]
-  #  mean(maxc .- minc .+ 1)
-  #end
-  #mean_receptiveFieldSpan()::Float32= mapslices(receptiveFieldSpan, W, dims=1)|> mean
-  mean_receptiveFieldSpan()= (params.γ*2+0.5)*
-                             (1-params.θ_potential_prob)
-  diameter= mean_receptiveFieldSpan()*s.sp_input_ratio
-  s.φ= @> (diameter-1)/2 max(1)
+function step!(s::InhibitionRadius, params)
+  @unpack γ,θ_potential_prob,szᵢₙ,szₛₚ,enable_local_inhibit = params
+  if enable_local_inhibit
+    # This implementation follows the SP paper description and NUPIC, but seems too complex
+    #   for no reason. Replace with a static inhibition radius instead
+    #receptiveFieldSpan(colinputs)::Float32= begin
+    #  connectedInputCoords= @>> colinputs findall getindex(s.ci)
+    #  maxc= [mapreduce(c->c.I[d], max, connectedInputCoords) for d in 1:Nin]
+    #  minc= [mapreduce(c->c.I[d], min, connectedInputCoords) for d in 1:Nin]
+    #  mean(maxc .- minc .+ 1)
+    #end
+    #mean_receptiveFieldSpan()::Float32= mapslices(receptiveFieldSpan, W, dims=1)|> mean
+    s.φ= simple_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ)
+  end
+end
+simple_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ)= begin
+  mean_receptiveFieldSpan()= (γ*2+0.5)*(1-θ_potential_prob)
+  receptiveFieldSpan_yspace()= (mean_receptiveFieldSpan()*mean(szₛₚ./szᵢₙ)-1)/2
+  max(receptiveFieldSpan_yspace(), 1)
 end
 
 

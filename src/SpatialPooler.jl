@@ -1,10 +1,10 @@
 include("common.jl")
 include("utils/topology.jl")
-include("algorithm_parameters.jl")
 include("dynamical_systems.jl")
+include("algorithm_parameters.jl")
 
 struct SpatialPooler{Nin,Nsp} #<: Region
-  params::SPParams
+  params::SPParams{Nin,Nsp}
   proximalSynapses::ProximalSynapses
   φ::InhibitionRadius
   b::Boosting
@@ -17,9 +17,9 @@ struct SpatialPooler{Nin,Nsp} #<: Region
     synapseSparsity= (1-θ_potential_prob)*(enable_local_inhibit ?
                         (α(γ)^Nin)/prod(szᵢₙ) : 1)
     new{Nin,Nsp}(params,
-        ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,
-            γ,θ_potential_prob,θ_permanence),
-        InhibitionRadius(γ,szᵢₙ, szₛₚ./szᵢₙ, enable_local_inhibit),
+        ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
+            θ_potential_prob,θ_permanence),
+        InhibitionRadius(γ,θ_potential_prob,szᵢₙ,szₛₚ, enable_local_inhibit),
         Boosting(ones(prod(szₛₚ)), szₛₚ)
     )
   end
@@ -36,10 +36,10 @@ function step!(sp::SpatialPooler, z::CellActivity)
   a= sp_activation(sp.proximalSynapses,sp.φ.φ,sp.b,z, sp.params)
   # Learning
   if sp.params.enable_learning
-    step!(sp.proximalSynapses, z,a,sp.params)
+    step!(sp.proximalSynapses, z,a, sp.params)
     step!(sp.b, a,sp.φ.φ,sp.params.Tboost,sp.params.β,
           sp.params.enable_local_inhibit,sp.params.enable_boosting)
-    step!(sp.φ, a,connected(sp.proximalSynapses), sp.params)
+    step!(sp.φ, sp.params)
   end
   return a
 end

@@ -1,7 +1,3 @@
-receptiveFieldSpan(γ,θ_potential_prob)= (γ*2+0.5)*(1-θ_potential_prob)
-receptiveFieldSpan_yspace(γ,θ_potential_prob,szᵢₙ,szₛₚ)=
-    (receptiveFieldSpan(γ,θ_potential_prob)*mean(szₛₚ./szᵢₙ)-1)/2
-
 @with_kw struct SPParams{Nin,Nsp}
   szᵢₙ::NTuple{Nin,Int}     = (32,32); @assert all(szᵢₙ.>0)
   szₛₚ::NTuple{Nsp,Int}     = (64,64); @assert all(szₛₚ.>0)
@@ -17,11 +13,9 @@ receptiveFieldSpan_yspace(γ,θ_potential_prob,szᵢₙ,szₛₚ)=
   θ_stimulus_activate::Int  = 1;       @assert θ_stimulus_activate>=0
   Tboost::Float32           = 200;     @assert Tboost>0
   β::Float32                = 1;       @assert β>0
-  φ::Float32                = max(receptiveFieldSpan_yspace(γ,θ_potential_prob,szᵢₙ,szₛₚ), 1)
   enable_local_inhibit::Bool= true
   enable_learning::Bool     = true
   enable_boosting::Bool     = true
-  @assert φ>=1
   @assert zero(𝕊𝕢)<=θ_permanence<=typemax(𝕊𝕢)
   @assert zero(𝕊𝕢)<=p⁺<=typemax(𝕊𝕢)
   @assert zero(𝕊𝕢)<=p⁻<=typemax(𝕊𝕢)
