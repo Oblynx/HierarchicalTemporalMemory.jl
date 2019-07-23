@@ -94,15 +94,15 @@ end
 Wₚ(s::ProximalSynapses)= s.connected
 
 function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
-  synapses_activeSP= @view s.Dₚ[:,a]
-  activeConn=   @. (synapses_activeSP>0) &  z
-  inactiveConn= @. (synapses_activeSP>0) & !z
-
+  @unpack p⁺,p⁻,θ_permanence = params
+  Dₚactive= @view s.Dₚ[:,a]
+  activeConn=   (Dₚactive .> 0) .&   z
+  inactiveConn= (Dₚactive .> 0) .& .!z
   # Learn synapse permanences according to Hebbian learning rule
-  @inbounds @. (synapses_activeSP= activeConn * (synapses_activeSP ⊕ params.p⁺) +
-      inactiveConn * (synapses_activeSP ⊖ params.p⁻))
+  @inbounds Dₚactive.= activeConn   .* (Dₚactive .⊕ p⁺) .+
+                       inactiveConn .* (Dₚactive .⊖ p⁻)
   # Update cache of connected synapses
-  @inbounds s.connected[:,vec(a)].= synapses_activeSP .> params.θ_permanence
+  @inbounds s.connected[:,vec(a)].= Dₚactive .> θ_permanence
 end
 function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   # Learn synapse permanences according to Hebbian learning rule
