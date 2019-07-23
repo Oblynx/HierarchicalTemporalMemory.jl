@@ -41,7 +41,7 @@ end
 # ## Proximal Synapses
 
 struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
-  synapses::SynapseT
+  Dₚ::SynapseT
   connected::ConnectedT
 
   """
@@ -87,14 +87,14 @@ struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
 
     SynapseT= synapseSparsity<0.05 ? SparseSynapses : DenseSynapses
     ConnectedT= synapseSparsity<0.05 ? SparseMatrixCSC{Bool} : Matrix{Bool}
-    proximalSynapses= fillin_permanences()
-    new{SynapseT,ConnectedT}(proximalSynapses, proximalSynapses .> θ_permanence)
+    Dₚ= fillin_permanences()
+    new{SynapseT,ConnectedT}(Dₚ, Dₚ .> θ_permanence)
   end
 end
-connected(s::ProximalSynapses)= s.connected
+Wₚ(s::ProximalSynapses)= s.connected
 
 function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
-  synapses_activeSP= @view s.synapses[:,a]
+  synapses_activeSP= @view s.Dₚ[:,a]
   activeConn=   @. (synapses_activeSP>0) &  z
   inactiveConn= @. (synapses_activeSP>0) & !z
 
@@ -108,43 +108,17 @@ function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   # Learn synapse permanences according to Hebbian learning rule
   sparse_foreach((scol,input_i)->
                     learn_sparsesynapses!(scol,input_i, z,params.p⁺,params.p⁻),
-                 s.synapses, a)
+                 s.Dₚ, a)
   # Update cache of connected synapses
-  @inbounds s.connected[:,a].= s.synapses[:,a] .> params.θ_permanence
+  @inbounds s.connected[:,a].= s.Dₚ[:,a] .> params.θ_permanence
 end
 function learn_sparsesynapses!(synapses_activeCol,input_i,z,p⁺,p⁻)
   @inbounds z_i= z[input_i]
   @inbounds synapses_activeCol.= z_i .* (synapses_activeCol .⊕ p⁺) .+
                                .!z_i .* (synapses_activeCol .⊖ p⁻)
 end
-step!(s::ProximalSynapses, z,a, params)= adapt!(s.synapses, s,z,a,params)
+step!(s::ProximalSynapses, z,a, params)= adapt!(s.Dₚ, s,z,a,params)
 
-
-# ## Boosting factors
-
-struct Boosting <:DenseArray{Float32,1}
-  b::Vector{Float32}
-  a_Tmean::Array{Float32}
-  a_Nmean::Array{Float32}
-  Boosting(b,spSize)= (b.>0)|> all ? new(b, zeros(spSize), zeros(spSize)) :
-                              error("Boosting factors >0")
-end
-Base.size(b::Boosting)= size(b.b)
-Base.getindex(b::Boosting, i::Int)= b.b[i]
-
-function step!(s::Boosting, a_t::CellActivity, φ,T,β, local_inhibit,enable)
-  mean_kernel(Ndim)= ones(ntuple(i->α(φ),Ndim)) ./ α(φ).^Ndim
-  a_Nmean!(aN,aT, local_inhibit::Val{true})=
-      imfilter!(aN,aT, aN|>size|>length|>mean_kernel, "symmetric")
-  a_Nmean!(aN,aT, local_inhibit::Val{false})= (aN.= mean(aT))
-
-  s.a_Tmean.= s.a_Tmean*(T-1)/T .+ a_t/T
-  a_Nmean!(s.a_Nmean, s.a_Tmean, Val(local_inhibit))
-  if enable
-    s.b.= boostfun.(s.a_Tmean, s.a_Nmean, β)|> vec
-  end
-end
-boostfun(a_Tmean,a_Nmean,β)= ℯ^(-β*(a_Tmean-a_Nmean))
 
 
 # ## Distal synapses for the TM
