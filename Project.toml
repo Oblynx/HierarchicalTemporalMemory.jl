@@ -1,10 +1,26 @@
-name = "HTM"
-uuid = "78246fe4-4c77-12e9-07b1-1b7cfb9ec1a1"
+name = "HierarchicalTemporalMemory"
+uuid = "db654dba-670c-566a-9226-64313b881ded"
 authors = ["Konstantinos Samaras-Tsakiris <ksamtsak@gmail.com>"]
 version = "0.1.0"
 
 [deps]
-Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
+Lazy = "50d2b5c4-7a5e-59d5-8109-a42b560f39c0"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[compat]
+julia = "≥ 1.2.0"
+
+[extras]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["CSV", "Test", "Plots", "Random", "Logging", "BenchmarkTools", "Printf"]
