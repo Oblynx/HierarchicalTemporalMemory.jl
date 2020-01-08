@@ -1,6 +1,6 @@
 module HTM
 
 include("SpatialPooler.jl")
-using .SpatialPoolerM
+include("TemporalMemory.jl")
 
 end # module
