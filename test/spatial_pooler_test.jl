@@ -10,10 +10,10 @@ using Plots; gr()
 import Random.seed!
 seed!(0)
 
-include("../src/common.jl")
-include("../src/SpatialPooler.jl")
-include("../src/encoder.jl")
-include("utils/utils.jl")
+include("src/common.jl")
+include("src/SpatialPooler.jl")
+include("src/encoder.jl")
+include("test/utils/utils.jl")
 
 display_evaluation(t,sp,sp_activity,spDims)= begin
   println("t=$t")
