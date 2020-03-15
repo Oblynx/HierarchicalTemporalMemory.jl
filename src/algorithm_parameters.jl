@@ -1,3 +1,7 @@
+"""
+SPParams{Nin,Nsp} holds the algorithm parameters for a spatial pooler with nomenclature
+similar to `doi:10.3389/fncom.2017.00111`
+"""
 @with_kw struct SPParams{Nin,Nsp}
   szᵢₙ::NTuple{Nin,Int}     = (32,32); @assert all(szᵢₙ.>0)
   szₛₚ::NTuple{Nsp,Int}     = (64,64); @assert all(szₛₚ.>0)

@@ -32,9 +32,9 @@ Wₚ(sp::SpatialPooler)= Wₚ(sp.synapses)
 
 # boosting
 step_åₙ!(sp::SpatialPooler)= step_åₙ!(sp,Val(sp.params.enable_local_inhibit))
-step_åₙ!(sp::SpatialPooler{Nin,Nsp},::Val{true}) where{Nin,Nsp}=
+step_åₙ!(sp::SpatialPooler{Nin,Nsp},local_inhibit::Val{true}) where{Nin,Nsp}=
     imfilter!(sp.åₙ,sp.åₜ, mean_kernel(sp.φ.φ,Nsp), "symmetric")
-step_åₙ!(sp::SpatialPooler,::Val{false})= (sp.åₙ.= mean(sp.åₜ))
+step_åₙ!(sp::SpatialPooler,local_inhibit::Val{false})= (sp.åₙ.= mean(sp.åₜ))
 step_boost!(sp::SpatialPooler,a)= begin
   @unpack Tboost,β, szₛₚ= sp.params
   step_åₙ!(sp)
