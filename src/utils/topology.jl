@@ -1,10 +1,33 @@
+"""
+Hypercube iterates over a hypercube of radius γ around xᶜ, bounded inside the space {1..sz}ᴺ.
+
+# Examples
+```jldoctest
+julia> hc= Hypercube((3,3),1,(10,10));
+julia> for i in hc; display(i); end
+(2, 2)
+(3, 2)
+(4, 2)
+(2, 3)
+(3, 3)
+(4, 3)
+(2, 4)
+(3, 4)
+(4, 4)
+```
+"""
 struct Hypercube{N}
+  "xᶜ are the center coordinates"
   xᶜ::NTuple{N,Int}
+  "γ is the hypercube radius. Points < γ away from xᶜ belong to the hypercube"
   γ::Int
+  "sz is the upper bound of the enclosing space"
   sz::NTuple{N,Int}
   indices::CartesianIndices{N}
 end
 Hypercube(xᶜ,γ,sz)= Hypercube(xᶜ,γ,sz, start(xᶜ,γ,sz))
+
+# Hypercube implements Iterator interface
 start(xᶜ,γ,sz)= CartesianIndices(map( (a,b)-> a:b,
                     max.(xᶜ .- γ, 1),
                     min.(xᶜ .+ γ, sz) ))
@@ -21,8 +44,14 @@ Base.length(hc::Hypercube)= length(hc.indices)
 Base.size(hc::Hypercube)= size(hc.indices)
 
 # Good first approximation!
+"""
+Hypersphere is approximated with a Hypercube for simplicity
+
+See also: [`Hypercube`](@ref)
+"""
 const Hypersphere{N}= Hypercube{N}
 
+# Create a hypercube that wraps around the edges of the enclosing space
 function wrapping_hypercube(xᶜ::NTuple{N,T},radius::Int,dims::NTuple{N,T}) where {N,T}
   xᶜ= convert(NTuple{N,UIntSP},xᶜ)
   dims= convert(NTuple{N,UIntSP},dims)
