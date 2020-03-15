@@ -10,10 +10,10 @@ using Plots; gr()
 import Random.seed!
 seed!(0)
 
-include("src/common.jl")
-include("src/SpatialPooler.jl")
-include("src/encoder.jl")
-include("test/utils/utils.jl")
+include("../src/common.jl")
+include("../src/SpatialPooler.jl")
+include("../src/encoder.jl")
+include("utils/utils.jl")
 
 display_evaluation(t,sp,sp_activity,spDims)= begin
   println("t=$t")
@@ -36,8 +36,7 @@ process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
     encOnlyIdx= setdiff(similarEncIdx, similarSpIdx)
     spOnlyIdx= setdiff(similarSpIdx, similarEncIdx)
     encANDspHistory[t]= (encANDsp= intersect(similarEncIdx,similarSpIdx), Nenc= length(similarEncIdx))
-    #t%08==0 &&
-    t==tN &&
+    t%30==0 &&
         plot_ts_similarEncSp(t,data.power_hourly_kw,
                              encOnlyIdx,spOnlyIdx,encANDspHistory)
   end
@@ -47,6 +46,7 @@ inputDims= ((14,6,4).*25,)
 spDims= (2048,).÷1
 #inputDims= (8,8)
 #spDims= (12,12)
+println("creating Spatial Pooler")
 sp= SpatialPooler(SPParams(
       szᵢₙ= map(sum,inputDims), szₛₚ=spDims,
       γ=1000,
@@ -60,7 +60,7 @@ sp= SpatialPooler(SPParams(
       enable_local_inhibit=false,
       enable_boosting=true))
 # Define input data
-data,tN= read_gympower("test/test_data/gym_power_benchmark-extended.csv")
+data,tN= read_gympower("test/test_data/gym_power_benchmark.csv")
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
                  encoder_size=inputDims[1], w=(23,27,27))
 # Histories
@@ -68,6 +68,7 @@ encHistory= falses(map(sum,inputDims)|>prod,tN)
 spHistory= falses(spDims|>prod,tN)
 encANDspHistory= Vector{NamedTuple{(:encANDsp,:Nenc),Tuple{Vector{Int},Int}}}(undef,tN)
 
+println("processing data")
 process_data!(encHistory,spHistory,encANDspHistory, tN,data,encParams,sp)
 total_overlap= [1; map(x->length(x.encANDsp), encANDspHistory[2:end]) ./
                    map(x->x.Nenc, encANDspHistory[2:end])]
