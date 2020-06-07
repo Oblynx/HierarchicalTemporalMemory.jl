@@ -1,21 +1,14 @@
-using Logging
-ENV["JULIA_DEBUG"] = "all"
-logger = ConsoleLogger(stdout, Logging.Debug);
+# Parameters for the test script (set in runtests.jl)
+#ENV["JULIA_DEBUG"] = "HierarchicalTemporalMemory"
+#plot_enabled= false
 
-using BenchmarkTools
-using CSV
-using Printf
-using StatsBase: median
+using HierarchicalTemporalMemory, BenchmarkTools, CSV, Printf, Lazy, Test
 using Plots; gr()
 import Random: seed!, bitrand
-#seed!(0)
+
+using StatsBase: median
 seed!()
 
-include("../src/common.jl")
-include("../src/SpatialPooler.jl")
-include("../src/encoder.jl")
-include("../src/decoder.jl")
-include("../src/TemporalMemory.jl")
 include("utils/utils.jl")
 
 plot_mase(data,pred,pred_timesteps)= begin
@@ -51,6 +44,7 @@ prediction_timesteps=1
 inputDims= ((15,6,3).*25,)
 spDims= (1600,)
 cellϵcol= 8
+@info "creating Spatial Pooler"
 sp= SpatialPooler(SPParams(
       szᵢₙ= map(sum,inputDims), szₛₚ=spDims,
       γ=1000,
@@ -63,6 +57,7 @@ sp= SpatialPooler(SPParams(
       Tboost=350,
       enable_local_inhibit=false,
       enable_boosting=true))
+@info "creating Temporal Memory"
 tm= TemporalMemory(TMParams(
       Nc=prod(spDims),
       cellϵcol=cellϵcol,
@@ -76,7 +71,7 @@ tm= TemporalMemory(TMParams(
 
 Ncol= prod(spDims); Ncell= Ncol*cellϵcol
 # Define input data
-data,tN= read_gympower("test/test_data/gym_power_benchmark-extended.csv")
+data,tN= read_gympower("test_data/gym_power_benchmark-extended.csv")
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
                  encoder_size=inputDims[1], w=(34,35,35))
 decoder= SDRClassifier(Ncell,encParams.power_p.buckets,
@@ -93,9 +88,12 @@ avg_burst= 0
 process_data!(tN,data,encParams,sp,tm,decoder)
 
 errormetric= mase(data.power_hourly_kw[400:end], history_likelyPred[400:end],prediction_timesteps)
-@printf("Prediction MASE: %.3f\n", errormetric)
+@info @sprintf("Prediction MASE: %.3f\n", errormetric)
 
 avg_TMout_sparsity= mapslices(x->count(x)./length(x),history_TMout,dims=1)'|>median
 plot_mase(data.power_hourly_kw, history_likelyPred, prediction_timesteps)
-@printf("avg_TMout_sparsity: %.3f%%\n", 100*avg_TMout_sparsity)
-@printf("avg_burst: %.3f%%\n", 100*avg_burst)
+@info @sprintf("avg_TMout_sparsity: %.3f%%\n", 100*avg_TMout_sparsity)
+@info @sprintf("avg_burst: %.3f%%\n", 100*avg_burst)
+
+# Sanity check: If this is not true, there's something very wrong with the temporal memory
+@test errormetric < 1.15

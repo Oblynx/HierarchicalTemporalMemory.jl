@@ -10,7 +10,7 @@ end
 _process_tm(t,tN, tm,a)= step!(tm,a)
 identity(a...)= a
 read_gympower(dataset_filename= "test/test_data/gym_power_benchmark.csv")= begin
-  data= CSV.read(dataset_filename, allowmissing=:auto)
+  data= CSV.read(dataset_filename)#; truestrings=["1"], falsestrings=["0"], types=(String,Float16,Int,String))
   ((power_hourly_kw= data.power_hourly_kw,
     hour= data.hour,
     is_weekend= data.is_weekend
@@ -40,6 +40,7 @@ end
 plot_ts_similarEncSp(t,ts,encOnly,spOnly,encANDspHistory)=
     if t>1 _plot_ts_similarEncSP(t,ts,encOnly,spOnly,encANDspHistory)
     end
+
 function _plot_ts_similarEncSP(t,ts,encOnly,spOnly,encANDspHistory)
   graph_ts()= begin
     graph_ts= plot(ts, label="power", ylims=(0.9minimum(ts),1.05maximum(ts)),
