@@ -1,12 +1,9 @@
 # Hierarchical Temporal Memory
 
-<!---
-[![Build Status](https://travis-ci.org/oblynx/htm.jl.svg?branch=master)](https://travis-ci.org/oblynx/htm.jl)
-
-[![Coverage Status](https://coveralls.io/repos/oblynx/htm.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/oblynx/htm.jl?branch=master)
-
-[![codecov.io](http://codecov.io/github/oblynx/htm.jl/coverage.svg?branch=master)](http://codecov.io/github/oblynx/htm.jl?branch=master)
---->
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://oblynx.github.io/HierarchicalTemporalMemory.jl/stable)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://oblynx.github.io/HierarchicalTemporalMemory.jl/dev)
+[![Build Status](https://travis-ci.com/oblynx/HierarchicalTemporalMemory.jl.svg?branch=master)](https://travis-ci.com/oblynx/HierarchicalTemporalMemory.jl)
+[![Coverage](https://codecov.io/gh/oblynx/HierarchicalTemporalMemory.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/oblynx/HierarchicalTemporalMemory.jl)
 
 Julia implementation of core [Numenta HTM](https://numenta.com/) algorithms
 
@@ -38,3 +35,11 @@ while this implementation groups operations on data structures together as much 
 The only reference is the [NUPIC implementation](https://github.com/numenta/nupic/blob/master/src/nupic/algorithms/backtracking_tm.py),
 [focusing here](https://github.com/numenta/nupic/blob/1aea72abde4457878a16288d6786ffb088f69164/src/nupic/algorithms/backtracking_tm.py#L1666).
 It isn't relevant to the current HTM research, only to applications.
+
+# PkgTemplate
+
+```
+julia> using PkgTemplates
+julia> t= Template(user="oblynx", dir=".", plugins=[GitHubActions(),Codecov(),Documenter{GitHubActions}(),Develop()])
+julia> t("HierarchicalTemporalMemory")
+```

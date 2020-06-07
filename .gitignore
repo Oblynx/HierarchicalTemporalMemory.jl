@@ -1,2 +1,6 @@
 *swp
 *mem
+*.jl.*.cov
+*.jl.cov
+*.jl.mem
+/docs/build/
