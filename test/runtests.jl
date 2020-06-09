@@ -1,22 +1,22 @@
 ENV["JULIA_DEBUG"] = "HierarchicalTemporalMemory"
 using HierarchicalTemporalMemory, Test
 
-@enum GROUPS All SpatialPooler TemporalMemory
+@enum GROUPS AllTests SpatialPoolerTest TemporalMemoryTest
 
 const GROUP= try
-  get(ENV, "GROUP", "All")|> Symbol|> eval
+  get(ENV, "GROUP", "AllTests")|> Symbol|> eval
 catch e
-  error("ENV[\"GROUP\"]: Invalid value. Supported values: $(GROUPS|>instances)")
+  error("ENV[\"GROUP\"]: Invalid value. Supported values: $(GROUPS|>instances)\n Given: $e")
 end
 global plot_enabled= false
 
 @testset "Topology" begin include("topology_test.jl") end
-if GROUP == All || GROUP == SpatialPooler
+if GROUP == AllTests || GROUP == SpatialPoolerTest
   @testset "Spatial Pooler" begin
     include("spatial_pooler_test.jl")
   end
 end
-if GROUP == All || GROUP == TemporalMemory
+if GROUP == AllTests || GROUP == TemporalMemoryTest
   @testset "Temporal Memory" begin
     include("temporal_memory_test.jl")
   end
