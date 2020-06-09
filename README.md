@@ -1,9 +1,8 @@
 # Hierarchical Temporal Memory
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://oblynx.github.io/HierarchicalTemporalMemory.jl/stable)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://oblynx.github.io/HierarchicalTemporalMemory.jl/dev)
-[![Build Status](https://travis-ci.com/oblynx/HierarchicalTemporalMemory.jl.svg?branch=master)](https://travis-ci.com/oblynx/HierarchicalTemporalMemory.jl)
+[![Build Status](https://github.com/oblynx/HierarchicalTemporalMemory.jl/workflows/CI/badge.svg)](https://github.com/oblynx/HierarchicalTemporalMemory.jl/actions)
 [![Coverage](https://codecov.io/gh/oblynx/HierarchicalTemporalMemory.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/oblynx/HierarchicalTemporalMemory.jl)
+
 
 Julia implementation of core [Numenta HTM](https://numenta.com/) algorithms
 
@@ -38,8 +37,8 @@ It isn't relevant to the current HTM research, only to applications.
 
 # PkgTemplate
 
-```
-julia> using PkgTemplates
-julia> t= Template(user="oblynx", dir=".", plugins=[GitHubActions(),Codecov(),Documenter{GitHubActions}(),Develop()])
-julia> t("HierarchicalTemporalMemory")
+```julia
+using PkgTemplates
+t= Template(user="oblynx", dir=".", plugins=[GitHubActions(),Codecov(),Documenter{GitHubActions}(),Develop()])
+t("HierarchicalTemporalMemory")
 ```
