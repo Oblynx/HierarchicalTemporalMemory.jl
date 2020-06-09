@@ -12,9 +12,6 @@ mutable struct InhibitionRadius <:AbstractFloat
         new(simplified_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ)) :
         new(maximum(szₛₚ)+1)
 end
-Base.promote_rule(::Type{InhibitionRadius}, ::Type{T}) where {T<:Number}= Float32
-Float32(x::InhibitionRadius)= x.φ
-Int(x::InhibitionRadius)= round(Int,x.φ)
 
 function step!(s::InhibitionRadius, params)
   @unpack γ,θ_potential_prob,szᵢₙ,szₛₚ,enable_local_inhibit = params
@@ -31,17 +28,17 @@ end
 
 # This implementation follows the SP paper description and NUPIC, but seems too complex
 #   for no reason. Replace with a static inhibition radius instead
-nupic_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ,s::InhibitionRadius)= begin
-  mean_receptiveFieldSpan()::Float32= mapslices(receptiveFieldSpan, W, dims=1)|> mean
-  receptiveFieldSpan_yspace()= (mean_receptiveFieldSpan()*mean(szₛₚ./szᵢₙ)-1)/2
-  max(receptiveFieldSpan_yspace(), 1)
-end
-receptiveFieldSpan(colinputs,s::InhibitionRadius)::Float32= begin
-  connectedInputCoords= @>> colinputs findall getindex(s.ci)
-  maxc= [mapreduce(c->c.I[d], max, connectedInputCoords) for d in 1:Nin]
-  minc= [mapreduce(c->c.I[d], min, connectedInputCoords) for d in 1:Nin]
-  mean(maxc .- minc .+ 1)
-end
+#nupic_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ,s::InhibitionRadius)= begin
+#  mean_receptiveFieldSpan()::Float32= mapslices(receptiveFieldSpan, W, dims=1)|> mean
+#  receptiveFieldSpan_yspace()= (mean_receptiveFieldSpan()*mean(szₛₚ./szᵢₙ)-1)/2
+#  max(receptiveFieldSpan_yspace(), 1)
+#end
+#receptiveFieldSpan(colinputs,s::InhibitionRadius)::Float32= begin
+#  connectedInputCoords= @>> colinputs findall getindex(s.ci)
+#  maxc= [mapreduce(c->c.I[d], max, connectedInputCoords) for d in 1:Nin]
+#  minc= [mapreduce(c->c.I[d], min, connectedInputCoords) for d in 1:Nin]
+#  mean(maxc .- minc .+ 1)
+#end
 
 
 # ## Proximal Synapses
