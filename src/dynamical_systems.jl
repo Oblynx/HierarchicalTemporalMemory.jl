@@ -43,18 +43,66 @@ end
 
 # ## Proximal Synapses
 
+"""
+ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection} are the feedforward connections of 2 neuron layers.
+
+Used in the context of the [`SpatialPooler`](@ref).
+
+# Description
+
+The neurons of both layers are expected to form minicolumns which share the same feedforward connections.
+The synapses are *binary*: they don't have a scalar weight, but either conduct (1) or not (0).
+Instead, they have a *permanence* value Dₚ ∈ (0,1] and a connection threshold θ.
+
+## Initialization
+
+Let presynaptic (input) neuron `xᵢ` and postsynaptic (output) neuron `yᵢ`, and a topological I/O mapping
+`xᵢ(yᵢ) :=` [`Hypercube`](@ref)`(yᵢ)`.
+∀
+
+## Synapse adaptation
+
+They adapt with a hebbian learning rule.
+The adaptation has a causal and an anticausal component:
+
+- If the postsynaptic neuron fires and the presynaptic fired too, the synapse is strengthened
+- If the postsynaptic neuron fires, but the presynaptic didn't, the synapse is weakened
+
+The synaptic permanences are clipped at the boundaries of 0 and 1.
+
+A simple implementation of the learning rule would look like this, where
+z: input, a: output
+```julia; results= "hidden"
+learn!(Dₚ,z,a)= begin
+  Dₚ[z,a]  .= (Dₚ[z,a].>0) .* (Dₚ[z,a]   .⊕ p⁺)
+  Dₚ[.!z,a].= (Dₚ[z,a].>0) .* (Dₚ[.!z,a] .⊖ p⁻)
+end
+```
+
+# Type parameters
+
+They allow a dense or sparse matrix representation of the synapses
+
+- `SynapseT`: `DenseSynapses` or `SparseSynapses`
+- `ConnectedT`: `DenseConnection` or `SparseConnection`
+
+See also: [`DistalSynapses`](@ref), [`SpatialPooler`](@ref), [`TemporalMemory`](@ref)
+"""
 struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
   Dₚ::SynapseT
   connected::ConnectedT
 
   """
-  Make an input x spcols synapse permanence matrix
-  params: includes size (num of cols)
-  Initialize potential synapses. For every column:
-  - find its center in the input space
-  - for every input in hypercube, draw rand Z
-    - If < 1-θ_potential_prob
-     - Init perm: rescale Z from [0..1-θ] -> [0..1]: Z/(1-θ)
+  `ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ, θ_potential_prob,θ_permanence)` makes an `{szᵢₙ × szₛₚ}` synapse permanence matrix
+  and initializes potential synapses.
+
+  # Algorithm
+
+  For every output minicolumn `yᵢ`:
+  - find its center in the input space `xᶜ`
+  - for every input `xᵢ ∈ Hypercube(xᶜ,γ)``, draw rand `Z`
+    - If `Z < 1-θ_potential_prob`
+     - Init permanence: rescale Z from `[0..1-θ] -> [0..1]: Z/(1-θ)``
   """
   function ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
         θ_potential_prob,θ_permanence)
@@ -96,6 +144,19 @@ struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
 end
 Wₚ(s::ProximalSynapses)= s.connected
 
+"""
+`step!(s::ProximalSynapses, z,a, params)` adapts the proximal synapses' permanences with a hebbian learning rule on input `z`
+and activation `a`. The adaptation has a causal and an anticausal component:
+
+- If the postsynaptic neuron fires and the presynaptic fired too, the synapse is strengthened
+- If the postsynaptic neuron fires, but the presynaptic didn't, the synapse is weakened
+
+See alse: [`ProximalSynapses`](@ref)
+"""
+step!(s::ProximalSynapses, z,a, params)= adapt!(s.Dₚ, s,z,a,params)
+
+# These are performance optimizations of the simple update methods described in the ProximalSynapses doc
+# - minimize allocations and accesses
 function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
   @unpack p⁺,p⁻,θ_permanence = params
   Dₚactive= @view s.Dₚ[:,a]
@@ -120,7 +181,6 @@ function learn_sparsesynapses!(synapses_activeCol,input_i,z,p⁺,p⁻)
   @inbounds synapses_activeCol.= z_i .* (synapses_activeCol .⊕ p⁺) .+
                                .!z_i .* (synapses_activeCol .⊖ p⁻)
 end
-step!(s::ProximalSynapses, z,a, params)= adapt!(s.Dₚ, s,z,a,params)
 
 
 

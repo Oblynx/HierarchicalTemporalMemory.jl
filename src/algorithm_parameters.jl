@@ -1,6 +1,13 @@
 """
 SPParams{Nin,Nsp} holds the algorithm parameters for a spatial pooler with nomenclature
-similar to `doi:10.3389/fncom.2017.00111`
+similar to [source](https://www.frontiersin.org/articles/10.3389/fncom.2017.00111/full)
+
+# Fields
+
+- `szᵢₙ`, `szₛₚ`: input/output dimensions
+- `γ`: receptive field radius (how large an input area an output minicolumn maps to)
+- `s`: average output sparsity
+- `θ_potential_prob`: probability threshold, above which the synapse can be connected
 """
 @with_kw struct SPParams{Nin,Nsp}
   szᵢₙ::NTuple{Nin,Int}     = (32,32); @assert all(szᵢₙ.>0)
