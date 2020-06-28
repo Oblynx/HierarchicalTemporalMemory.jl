@@ -101,3 +101,66 @@ function bitarray(idx::Int,dims)
 end
 padfalse(b::BitArray,dim)= [b;falses(dim-length(b))]
 padfalse(b::Vector{T},dim) where T= [b;zeros(T,dim-length(b))]
+
+
+"""
+`Sequence(;δ,init)` is an easy way to define sequences with transition function `δ` and starting condition `init`
+as an iterator.
+
+# Examples
+
+Fibonacci sequence:
+```jldoctest exp; setup= :(import IterTools, Lazy; const HTM=HierarchicalTemporalMemory)
+fibonacci_δ(a,b)= b, a+b
+fibonacci_init= 0,1
+Lazy.@as _1 HTM.Sequence(fibonacci_δ, fibonacci_init) IterTools.take(_1, 13) foreach(display, _1)
+
+# output
+0
+1
+1
+2
+3
+5
+8
+13
+21
+34
+55
+89
+144
+```
+
+Factorial sequence:
+```jldoctest exp
+factorial_δ(a,b)= a*b, b+1
+factorial_init= 1,1
+Lazy.@as _1 HTM.Sequence(factorial_δ, factorial_init) IterTools.take(_1, 13) foreach(display, _1)
+
+# output
+1
+1
+2
+6
+24
+120
+720
+5040
+40320
+362880
+3628800
+39916800
+479001600
+```
+"""
+struct Sequence{F <: Function, I}
+  δ::F
+  init::I
+  Sequence(δ::F,init::I) where {F,I}= new{F,I}(δ,init)
+  Sequence(;δ::F,init::I) where {F,I}= new{F,I}(δ,init)
+end
+
+Base.iterate(s::Sequence) = iterate(s, s.init)
+Base.iterate(s::Sequence, state) = state[1], s.δ(state...)
+Base.IteratorSize(::Sequence) = Base.SizeUnknown()
+Base.IteratorEltype(::Sequence) = Base.EltypeUnknown()

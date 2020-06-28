@@ -1,5 +1,5 @@
-#ENV["JULIA_DEBUG"] = "HierarchicalTemporalMemory"
-#plot_enabled= false
+ENV["JULIA_DEBUG"] = "HierarchicalTemporalMemory"
+plot_enabled= false
 
 using HierarchicalTemporalMemory, BenchmarkTools, CSV, Printf, Lazy, Test
 using Plots; gr()
