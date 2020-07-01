@@ -11,13 +11,14 @@ include("utils/utils.jl")
 display_evaluation(t,sp,sp_activity,spDims)= begin
   @info("t=$t")
   sparsity= count(sp_activity)/prod(spDims)*100
-  sparsity|> display
 
+  # Evaluation metrics
+  #@info "Sparsity: " sparsity
   #histogram(sp.b.b)|> display
-  #histogram(sp.proximalSynapses.synapses[sp.proximalSynapses.synapses.>0]|>Vector, yaxis=(:log10))|> display
+  #histogram(sp.synapses.Dₚ[sp.synapses.Dₚ.>0]|>Vector, yaxis=(:log10))|> display
   #heatmap(@> sp_activity reshape(64,32))|> display
   #heatmap(@> sp.b.a_Tmean reshape(64,32))|> display
-  #heatmap(sp.proximalSynapses.synapses)|> display
+  #heatmap(sp.synapses.Dₚ)|> display
 end
 process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
   for t in 1:tN
@@ -44,7 +45,7 @@ sp= SpatialPooler(SPParams(
       szᵢₙ= map(sum,inputDims), szₛₚ=spDims,
       γ=1000,
       s=0.02,
-      θ_potential_prob=0.8,
+      prob_synapse=0.15,
       θ_stimulus_activate=4,
       p⁺_01= 0.07,
       p⁻_01= 0.12,

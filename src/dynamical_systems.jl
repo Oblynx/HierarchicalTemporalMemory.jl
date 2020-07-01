@@ -7,28 +7,28 @@ under the influence of other elements of the Spatial Pooler. It provides an init
 """
 mutable struct InhibitionRadius <:AbstractFloat
   φ::Float32
-  InhibitionRadius(γ,θ_potential_prob,szᵢₙ,szₛₚ,enable_local_inhibit=true)=
+  InhibitionRadius(γ,prob_synapse,szᵢₙ,szₛₚ,enable_local_inhibit=true)=
       enable_local_inhibit ?
-        new(simplified_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ)) :
+        new(simplified_update_φ(γ,prob_synapse,szᵢₙ,szₛₚ)) :
         new(maximum(szₛₚ)+1)
 end
 
 function step!(s::InhibitionRadius, params)
-  @unpack γ,θ_potential_prob,szᵢₙ,szₛₚ,enable_local_inhibit = params
+  @unpack γ,prob_synapse,szᵢₙ,szₛₚ,enable_local_inhibit = params
   if enable_local_inhibit
-    s.φ= simplified_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ)
+    s.φ= simplified_update_φ(γ,prob_synapse,szᵢₙ,szₛₚ)
   end
 end
 
-simplified_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ)= begin
-  mean_receptiveFieldSpan()= (γ*2+0.5)*(1-θ_potential_prob)
+simplified_update_φ(γ,prob_synapse,szᵢₙ,szₛₚ)= begin
+  mean_receptiveFieldSpan()= (γ*2+0.5)*prob_synapse
   receptiveFieldSpan_yspace()= (mean_receptiveFieldSpan()*mean(szₛₚ./szᵢₙ)-1)/2
   max(receptiveFieldSpan_yspace(), 1)
 end
 
 # This implementation follows the SP paper description and NUPIC, but seems too complex
 #   for no reason. Replace with a static inhibition radius instead
-#nupic_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ,s::InhibitionRadius)= begin
+#nupic_update_φ(γ,prob_synapse,szᵢₙ,szₛₚ,s::InhibitionRadius)= begin
 #  mean_receptiveFieldSpan()::Float32= mapslices(receptiveFieldSpan, W, dims=1)|> mean
 #  receptiveFieldSpan_yspace()= (mean_receptiveFieldSpan()*mean(szₛₚ./szᵢₙ)-1)/2
 #  max(receptiveFieldSpan_yspace(), 1)
@@ -93,7 +93,7 @@ struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
   connected::ConnectedT
 
   """
-  `ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ, θ_potential_prob,θ_permanence)` makes an `{szᵢₙ × szₛₚ}` synapse permanence matrix
+  `ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ, prob_synapse,θ_permanence)` makes an `{szᵢₙ × szₛₚ}` synapse permanence matrix
   and initializes potential synapses.
 
   # Algorithm
@@ -101,20 +101,20 @@ struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
   For every output minicolumn `yᵢ`:
   - find its center in the input space `xᶜ`
   - for every input `xᵢ ∈ Hypercube(xᶜ,γ)``, draw rand `Z`
-    - If `Z < 1-θ_potential_prob`
-     - Init permanence: rescale Z from `[0..1-θ] -> [0..1]: Z/(1-θ)``
+    - If `Z > prob_synapse`
+      - Init permanence: rescale Z from `[0..1-θ] -> [0..1]: Z/(1-θ)``
   """
   function ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
-        θ_potential_prob,θ_permanence)
+        prob_synapse,θ_permanence)
     # Map column coordinates to their center in the input space. Column coords FROM 1 !!!
     xᶜ(yᵢ)= floor.(Int, (yᵢ.-1) .* (szᵢₙ./szₛₚ)) .+1
     xᵢ(xᶜ)= Hypercube(xᶜ,γ,szᵢₙ)
-    θ_effective()= floor(𝕊𝕢, (1 - θ_potential_prob)*typemax(𝕊𝕢))
+    θ_effective()= floor(𝕊𝕢, prob_synapse*typemax(𝕊𝕢))
     out_lattice()= (c.I for c in CartesianIndices(szₛₚ))
 
     # Draw permanences from uniform distribution. Connections aren't very sparse (40%),
     #   so prefer a dense matrix
-    permanences(::Type{SparseSynapses},xᵢ)= sprand(𝕊𝕢,length(xᵢ),1, 1-θ_potential_prob)
+    permanences(::Type{SparseSynapses},xᵢ)= sprand(𝕊𝕢,length(xᵢ),1, prob_synapse)
     permanences(::Type{DenseSynapses}, xᵢ)= begin
       # Decide randomly if yᵢ ⟷ xᵢ will connect
       p= rand(𝕊𝕢range,length(xᵢ))

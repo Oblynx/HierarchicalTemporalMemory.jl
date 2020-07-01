@@ -76,15 +76,15 @@ struct SpatialPooler{Nin,Nsp} #<: Region
 
   # Nin, Nsp: number of input and spatial pooler dimensions
   function SpatialPooler(params::SPParams{Nin,Nsp}) where {Nin,Nsp}
-    @unpack szᵢₙ,szₛₚ,θ_potential_prob,θ_permanence,γ,
+    @unpack szᵢₙ,szₛₚ,prob_synapse,θ_permanence,γ,
             enable_local_inhibit  = params
 
-    synapseSparsity= (1-θ_potential_prob)*(enable_local_inhibit ?
+    synapseSparsity= prob_synapse * (enable_local_inhibit ?
                         (α(γ)^Nin)/prod(szᵢₙ) : 1)
     new{Nin,Nsp}(params,
         ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
-            θ_potential_prob,θ_permanence),
-        InhibitionRadius(γ,θ_potential_prob,szᵢₙ,szₛₚ, enable_local_inhibit),
+            prob_synapse,θ_permanence),
+        InhibitionRadius(γ,prob_synapse,szᵢₙ,szₛₚ, enable_local_inhibit),
         ones(prod(szₛₚ)), zeros(szₛₚ), zeros(szₛₚ)
     )
   end
@@ -149,8 +149,8 @@ function sp_activate(sp::SpatialPooler{Nin,Nsp}, z) where {Nin,Nsp}
   θ_inhibit!(X)= @> X vec partialsort!(k(),rev=true)
   # Z: k-th larger overlap in neighborhood
   Z(y)= _Z(Val(enable_local_inhibit),y)
-  _Z(local::Val{true},y)= mapwindow(θ_inhibit!, y, neighborhood(φ,Nsp), border=Fill(0))
-  _Z(local::Val{false},y)= θ_inhibit!(copy(y))
+  _Z(loc_inhibit::Val{true}, y)= mapwindow(θ_inhibit!, y, neighborhood(φ,Nsp), border=Fill(0))
+  _Z(loc_inhibit::Val{false},y)= θ_inhibit!(copy(y))
 
   activate(o)= (o .>= Z(o)) .& (o .> θ_stimulus_activate)
   z|> o|> activate

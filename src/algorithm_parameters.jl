@@ -7,14 +7,16 @@ similar to [source](https://www.frontiersin.org/articles/10.3389/fncom.2017.0011
 - `szᵢₙ`, `szₛₚ`: input/output dimensions
 - `γ`: receptive field radius (how large an input area an output minicolumn maps to)
 - `s`: average output sparsity
-- `θ_potential_prob`: probability threshold, above which the synapse can be connected
+- `prob_synapse`: probability for each element of the `szᵢₙ × szₛₚ` space to be a synapse.
+  Elements that roll below this value don't form a synapse and don't get a permanence value.
+  If this is very low, the proximal synapses matrix can become sparse.
 """
 @with_kw struct SPParams{Nin,Nsp}
   szᵢₙ::NTuple{Nin,Int}     = (32,32); @assert all(szᵢₙ.>0)
   szₛₚ::NTuple{Nsp,Int}     = (64,64); @assert all(szₛₚ.>0)
   γ::Int                    = 6;       @assert γ>0
   s::Float32                = .02;     @assert s>0
-  θ_potential_prob::Float32 = .5;      @assert 0<=θ_potential_prob<=1
+  prob_synapse::Float32     = .5;      @assert 0<=prob_synapse<=1
   θ_permanence01::Float32   = .5;      @assert 0<=θ_permanence01<=1
   p⁺_01::Float32            = .1;      @assert 0<=p⁺_01<=1
   p⁻_01::Float32            = .02;     @assert 0<=p⁻_01<=1
