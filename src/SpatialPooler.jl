@@ -4,7 +4,8 @@
 
 
 """
-`SpatialPooler{Nin,Nsp}` is a learning algorithm that decorrelates the features of an input space.
+`SpatialPooler{Nin,Nsp}` is a learning algorithm that decorrelates the features of an input space,
+producing a Sparse Distributed Representation (SDR) of the input space.
 If defines the proximal connections of an HTM layer.
 
 # Examples
