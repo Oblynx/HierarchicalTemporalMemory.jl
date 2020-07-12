@@ -26,16 +26,16 @@ _collect(itr,n,elT)= Base.collect(itr)
 Iterate over the trues of a BitArray
 
 # Examples
-```jldoctest
-julia> using Random; seed!(5);
-julia> b=bitrand(5)
+```jldoctest; setup= :(import Random; Random.seed!(5))
+julia> b= Random.bitrand(5)
 5-element BitArray{1}:
-  true
- false
- false
-  true
-  true
-julia> foreach(i-> print(string(i)*" "), Truesof(b))
+ 1
+ 0
+ 0
+ 1
+ 1
+
+julia> foreach(i-> print(string(i)*" "), HTM.Truesof(b))
 1 4 5
 ```
 """
@@ -110,10 +110,10 @@ as an iterator.
 # Examples
 
 Fibonacci sequence:
-```jldoctest exp; setup= :(import IterTools, Lazy; const HTM=HierarchicalTemporalMemory)
-fibonacci_δ(a,b)= b, a+b
-fibonacci_init= 0,1
-Lazy.@as _1 HTM.Sequence(fibonacci_δ, fibonacci_init) IterTools.take(_1, 13) foreach(display, _1)
+```jldoctest exp; setup= :(import IterTools, Lazy)
+fibonacci_δ(a,b)= b, a+b;
+fibonacci_init= 0,1;
+Lazy.@as _1 HTM.Sequence(fibonacci_δ, fibonacci_init) IterTools.take(_1, 13) foreach(println, _1)
 
 # output
 0
@@ -133,9 +133,9 @@ Lazy.@as _1 HTM.Sequence(fibonacci_δ, fibonacci_init) IterTools.take(_1, 13) fo
 
 Factorial sequence:
 ```jldoctest exp
-factorial_δ(a,b)= a*b, b+1
-factorial_init= 1,1
-Lazy.@as _1 HTM.Sequence(factorial_δ, factorial_init) IterTools.take(_1, 13) foreach(display, _1)
+factorial_δ(a,b)= a*b, b+1;
+factorial_init= 1,1;
+Lazy.@as _1 HTM.Sequence(factorial_δ, factorial_init) IterTools.take(_1, 13) foreach(println, _1)
 
 # output
 1

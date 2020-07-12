@@ -4,7 +4,8 @@ Hypercube iterates over a hypercube of radius γ around xᶜ, bounded inside the
 # Examples
 ```jldoctest
 julia> hc= Hypercube((3,3),1,(10,10));
-julia> for i in hc; display(i); end
+
+julia> foreach(println, hc)
 (2, 2)
 (3, 2)
 (4, 2)

@@ -1,6 +1,11 @@
 using HierarchicalTemporalMemory
 using Documenter
 
+DocMeta.setdocmeta!(HierarchicalTemporalMemory, :DocTestSetup, :(
+    using HierarchicalTemporalMemory;
+    const HTM=HierarchicalTemporalMemory
+  ); recursive=true)
+
 makedocs(;
     modules=[HierarchicalTemporalMemory],
     authors="Konstantinos Samaras-Tsakiris <ksamtsak@gmail.com> and contributors",

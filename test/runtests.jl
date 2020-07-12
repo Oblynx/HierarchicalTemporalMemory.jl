@@ -1,7 +1,7 @@
 ENV["JULIA_DEBUG"] = "HierarchicalTemporalMemory"
-using HierarchicalTemporalMemory, Test
+using Documenter, Test, HierarchicalTemporalMemory
 
-@enum GROUPS AllTests SpatialPoolerTest TemporalMemoryTest
+@enum GROUPS AllTests SpatialPoolerTest TemporalMemoryTest Basic
 
 const GROUP= try
   get(ENV, "GROUP", "AllTests")|> Symbol|> eval
@@ -12,6 +12,14 @@ global plot_enabled= false
 
 #using Aqua
 #Aqua.test_all(HierarchicalTemporalMemory)
+
+@testset "Doctests" begin
+  DocMeta.setdocmeta!(HierarchicalTemporalMemory, :DocTestSetup, :(
+      using HierarchicalTemporalMemory;
+      const HTM=HierarchicalTemporalMemory
+    ); recursive=true)
+  doctest(HierarchicalTemporalMemory)
+end
 
 @testset "Topology" begin include("topology_test.jl") end
 if GROUP == AllTests || GROUP == SpatialPoolerTest
