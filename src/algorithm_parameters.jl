@@ -57,10 +57,17 @@ All gated features are enabled by default.
   @assert zero(𝕊𝕢)<=p⁻<=typemax(𝕊𝕢)
 end
 
+"""
+`TMParams` holds the algorithm parameters for a Temporal Memory with nomenclature
+similar to [source]()
+"""
 @with_kw struct TMParams
+  # dimensions
   Nc::Int                  = 4096;    @assert Nc>0
   cellϵcol::Int            = 16;      @assert cellϵcol>0
   Nₙ::Int                  = Nc*cellϵcol;    @assert Nₙ>0
+
+  # tuning
   p⁺_01::Float32           = .12;     @assert 0<=p⁺_01<=1
   p⁻_01::Float32           = .04;     @assert 0<=p⁻_01<=1
   LTD_p⁻_01::Float32       = .002;    @assert 0<=LTD_p⁻_01<=1
@@ -72,6 +79,8 @@ end
   synapseSampleSize::Int   = 25;      @assert synapseSampleSize>0
   θ_stimulus_activate::Int = 14;      @assert θ_stimulus_activate>0
   θ_stimulus_learn::Int    = 12;      @assert θ_stimulus_learn>0
+
+  # feature gates
   enable_learning::Bool    = true
   @assert θ_stimulus_learn <= θ_stimulus_activate
 end
