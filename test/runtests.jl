@@ -10,6 +10,9 @@ catch e
 end
 global plot_enabled= false
 
+#using Aqua
+#Aqua.test_all(HierarchicalTemporalMemory)
+
 @testset "Topology" begin include("topology_test.jl") end
 if GROUP == AllTests || GROUP == SpatialPoolerTest
   @testset "Spatial Pooler" begin

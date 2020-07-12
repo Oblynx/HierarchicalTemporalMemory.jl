@@ -7,7 +7,7 @@ using Plots; gr()
 import Random: seed!, bitrand
 
 using StatsBase: median
-seed!()
+seed!(0)
 
 include("utils/utils.jl")
 
@@ -49,7 +49,7 @@ sp= SpatialPooler(SPParams(
       szᵢₙ= map(sum,inputDims), szₛₚ=spDims,
       γ=1000,
       s=0.03,
-      θ_potential_prob=0.85,
+      prob_synapse=0.85,
       θ_stimulus_activate=5,
       p⁺_01= 0.20,
       p⁻_01= 0.12,

@@ -1,4 +1,3 @@
-__precompile__(false)
 module HierarchicalTemporalMemory
 
 using SparseArrays
@@ -20,6 +19,7 @@ const 𝕊𝕢= UInt8
 "𝕊𝕢range is the domain of connection permanence quantization"
 const 𝕊𝕢range= 𝕊𝕢(0):typemax(𝕊𝕢)
 
+"Type of neuron layer activations"
 const CellActivity= BitArray
 const DenseSynapses= Matrix{𝕊𝕢}
 const SparseSynapses= SparseMatrixCSC{𝕊𝕢}
@@ -40,8 +40,6 @@ include("dynamical_systems.jl")
 include("algorithm_parameters.jl")
 include("SpatialPooler.jl")
 include("TemporalMemory.jl")
-
-@debug "[HierarchicalTemporalMemory] main definitions loaded"
 
 export Hypercube, Hypersphere
 export SpatialPooler, SPParams

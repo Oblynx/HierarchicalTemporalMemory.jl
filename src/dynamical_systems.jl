@@ -7,28 +7,28 @@ under the influence of other elements of the Spatial Pooler. It provides an init
 """
 mutable struct InhibitionRadius <:AbstractFloat
   φ::Float32
-  InhibitionRadius(γ,θ_potential_prob,szᵢₙ,szₛₚ,enable_local_inhibit=true)=
+  InhibitionRadius(γ,prob_synapse,szᵢₙ,szₛₚ,enable_local_inhibit=true)=
       enable_local_inhibit ?
-        new(simplified_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ)) :
+        new(simplified_update_φ(γ,prob_synapse,szᵢₙ,szₛₚ)) :
         new(maximum(szₛₚ)+1)
 end
 
 function step!(s::InhibitionRadius, params)
-  @unpack γ,θ_potential_prob,szᵢₙ,szₛₚ,enable_local_inhibit = params
+  @unpack γ,prob_synapse,szᵢₙ,szₛₚ,enable_local_inhibit = params
   if enable_local_inhibit
-    s.φ= simplified_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ)
+    s.φ= simplified_update_φ(γ,prob_synapse,szᵢₙ,szₛₚ)
   end
 end
 
-simplified_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ)= begin
-  mean_receptiveFieldSpan()= (γ*2+0.5)*(1-θ_potential_prob)
+simplified_update_φ(γ,prob_synapse,szᵢₙ,szₛₚ)= begin
+  mean_receptiveFieldSpan()= (γ*2+0.5)*prob_synapse
   receptiveFieldSpan_yspace()= (mean_receptiveFieldSpan()*mean(szₛₚ./szᵢₙ)-1)/2
   max(receptiveFieldSpan_yspace(), 1)
 end
 
 # This implementation follows the SP paper description and NUPIC, but seems too complex
 #   for no reason. Replace with a static inhibition radius instead
-#nupic_update_φ(γ,θ_potential_prob,szᵢₙ,szₛₚ,s::InhibitionRadius)= begin
+#nupic_update_φ(γ,prob_synapse,szᵢₙ,szₛₚ,s::InhibitionRadius)= begin
 #  mean_receptiveFieldSpan()::Float32= mapslices(receptiveFieldSpan, W, dims=1)|> mean
 #  receptiveFieldSpan_yspace()= (mean_receptiveFieldSpan()*mean(szₛₚ./szᵢₙ)-1)/2
 #  max(receptiveFieldSpan_yspace(), 1)
@@ -43,30 +43,78 @@ end
 
 # ## Proximal Synapses
 
+"""
+ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection} are the feedforward connections of 2 neuron layers.
+
+Used in the context of the [`SpatialPooler`](@ref).
+
+# Description
+
+The neurons of both layers are expected to form minicolumns which share the same feedforward connections.
+The synapses are *binary*: they don't have a scalar weight, but either conduct (1) or not (0).
+Instead, they have a *permanence* value Dₚ ∈ (0,1] and a connection threshold θ.
+
+## Initialization
+
+Let presynaptic (input) neuron `xᵢ` and postsynaptic (output) neuron `yᵢ`, and a topological I/O mapping
+`xᵢ(yᵢ) :=` [`Hypercube`](@ref)`(yᵢ)`.
+∀
+
+## Synapse adaptation
+
+They adapt with a hebbian learning rule.
+The adaptation has a causal and an anticausal component:
+
+- If the postsynaptic neuron fires and the presynaptic fired too, the synapse is strengthened
+- If the postsynaptic neuron fires, but the presynaptic didn't, the synapse is weakened
+
+The synaptic permanences are clipped at the boundaries of 0 and 1.
+
+A simple implementation of the learning rule would look like this, where
+z: input, a: output
+```julia; results= "hidden"
+learn!(Dₚ,z,a)= begin
+  Dₚ[z,a]  .= (Dₚ[z,a].>0) .* (Dₚ[z,a]   .⊕ p⁺)
+  Dₚ[.!z,a].= (Dₚ[z,a].>0) .* (Dₚ[.!z,a] .⊖ p⁻)
+end
+```
+
+# Type parameters
+
+They allow a dense or sparse matrix representation of the synapses
+
+- `SynapseT`: `DenseSynapses` or `SparseSynapses`
+- `ConnectedT`: `DenseConnection` or `SparseConnection`
+
+See also: [`DistalSynapses`](@ref), [`SpatialPooler`](@ref), [`TemporalMemory`](@ref)
+"""
 struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
   Dₚ::SynapseT
   connected::ConnectedT
 
   """
-  Make an input x spcols synapse permanence matrix
-  params: includes size (num of cols)
-  Initialize potential synapses. For every column:
-  - find its center in the input space
-  - for every input in hypercube, draw rand Z
-    - If < 1-θ_potential_prob
-     - Init perm: rescale Z from [0..1-θ] -> [0..1]: Z/(1-θ)
+  `ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ, prob_synapse,θ_permanence)` makes an `{szᵢₙ × szₛₚ}` synapse permanence matrix
+  and initializes potential synapses.
+
+  # Algorithm
+
+  For every output minicolumn `yᵢ`:
+  - find its center in the input space `xᶜ`
+  - for every input `xᵢ ∈ Hypercube(xᶜ,γ)``, draw rand `Z`
+    - If `Z > prob_synapse`
+      - Init permanence: rescale Z from `[0..1-θ] -> [0..1]: Z/(1-θ)``
   """
   function ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
-        θ_potential_prob,θ_permanence)
+        prob_synapse,θ_permanence)
     # Map column coordinates to their center in the input space. Column coords FROM 1 !!!
     xᶜ(yᵢ)= floor.(Int, (yᵢ.-1) .* (szᵢₙ./szₛₚ)) .+1
     xᵢ(xᶜ)= Hypercube(xᶜ,γ,szᵢₙ)
-    θ_effective()= floor(𝕊𝕢, (1 - θ_potential_prob)*typemax(𝕊𝕢))
+    θ_effective()= floor(𝕊𝕢, prob_synapse*typemax(𝕊𝕢))
     out_lattice()= (c.I for c in CartesianIndices(szₛₚ))
 
     # Draw permanences from uniform distribution. Connections aren't very sparse (40%),
     #   so prefer a dense matrix
-    permanences(::Type{SparseSynapses},xᵢ)= sprand(𝕊𝕢,length(xᵢ),1, 1-θ_potential_prob)
+    permanences(::Type{SparseSynapses},xᵢ)= sprand(𝕊𝕢,length(xᵢ),1, prob_synapse)
     permanences(::Type{DenseSynapses}, xᵢ)= begin
       # Decide randomly if yᵢ ⟷ xᵢ will connect
       p= rand(𝕊𝕢range,length(xᵢ))
@@ -96,6 +144,19 @@ struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
 end
 Wₚ(s::ProximalSynapses)= s.connected
 
+"""
+`step!(s::ProximalSynapses, z,a, params)` adapts the proximal synapses' permanences with a hebbian learning rule on input `z`
+and activation `a`. The adaptation has a causal and an anticausal component:
+
+- If the postsynaptic neuron fires and the presynaptic fired too, the synapse is strengthened
+- If the postsynaptic neuron fires, but the presynaptic didn't, the synapse is weakened
+
+See alse: [`ProximalSynapses`](@ref)
+"""
+step!(s::ProximalSynapses, z,a, params)= adapt!(s.Dₚ, s,z,a,params)
+
+# These are performance optimizations of the simple update methods described in the ProximalSynapses doc
+# - minimize allocations and accesses
 function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
   @unpack p⁺,p⁻,θ_permanence = params
   Dₚactive= @view s.Dₚ[:,a]
@@ -120,7 +181,6 @@ function learn_sparsesynapses!(synapses_activeCol,input_i,z,p⁺,p⁻)
   @inbounds synapses_activeCol.= z_i .* (synapses_activeCol .⊕ p⁺) .+
                                .!z_i .* (synapses_activeCol .⊖ p⁻)
 end
-step!(s::ProximalSynapses, z,a, params)= adapt!(s.Dₚ, s,z,a,params)
 
 
 
