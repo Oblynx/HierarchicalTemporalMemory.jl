@@ -9,7 +9,7 @@ DocMeta.setdocmeta!(HierarchicalTemporalMemory, :DocTestSetup, :(
 makedocs(;
     modules=[HierarchicalTemporalMemory],
     authors="Konstantinos Samaras-Tsakiris <ksamtsak@gmail.com> and contributors",
-    repo="https://github.com/oblynx/HierarchicalTemporalMemory.jl/blob/{commit}{path}#L{line}",
+    repo="https://github.com/Oblynx/HierarchicalTemporalMemory.jl/blob/{commit}{path}#L{line}",
     sitename="HierarchicalTemporalMemory.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
@@ -22,5 +22,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/oblynx/HierarchicalTemporalMemory.jl",
+    repo="github.com/Oblynx/HierarchicalTemporalMemory.jl",
 )
