@@ -4,7 +4,12 @@ CurrentModule = HierarchicalTemporalMemory
 
 # Hierarchical Temporal Memory
 
-This package provides an algorithmic model of intelligence, the Hierarchical Temporal Memory.
+Hierarchical Temporal Memory is an abstract algorithmic **model of the human brain** (specifically the neocortex).
+It's a tool for
+
+- neuroscience: **understanding the human brain**
+- machine learning: **predicting time series** and **detecting anomalies**
+
 The main algorithms of this model, the Spatial Pooler and Temporal (Sequence) Memory, are described in:
 
 - [The HTM Spatial Pooler—A Neocortical Algorithm for Online Sparse Distributed Coding](https://www.frontiersin.org/articles/10.3389/fncom.2017.00111/full)

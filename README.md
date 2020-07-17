@@ -1,5 +1,6 @@
 # Hierarchical Temporal Memory
 
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://oblynx.github.io/HierarchicalTemporalMemory.jl/dev)
 [![Build Status](https://github.com/oblynx/HierarchicalTemporalMemory.jl/workflows/CI/badge.svg)](https://github.com/oblynx/HierarchicalTemporalMemory.jl/actions)
 [![Coverage](https://codecov.io/gh/oblynx/HierarchicalTemporalMemory.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/oblynx/HierarchicalTemporalMemory.jl)
 
