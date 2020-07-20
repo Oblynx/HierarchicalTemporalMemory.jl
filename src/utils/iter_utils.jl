@@ -68,19 +68,19 @@ sparse_map(f, s::SparseMatrixCSC,columnIdx)=
   end
 
 """
-`@percolumn(f,a,b,k,Ncol)`
+`@percolumn(f,a,b,k)`
 
-Macro to apply `f` elementwise and concatenate the results.
-- `a`: vector of size [`Ncol`*`k`], column-major
-- `b`: vectors of size `Ncol`
+Macro to fold a large vector `a` per columns `k` and apply binary operator `f` elementwise
+- `a`: vector of size `Nc*k`, column-major (important because it will fold every `k` elements)
+- `b`: vector of size `Nc`
 """
 macro percolumn(f,a,b,k)
   esc(:( $f.(reshape($a,$k,:), $b') ))
 end
 """
-`@percolumn(reduce,a,k,Ncol)`
+`@percolumn(reduce,a,k)`
 
-Macro to `reduce` `a` per column.
+Macro to `reduce(a)` per column `k`.
 """
 macro percolumn(reduce,a,k)
   esc(:( $reduce(reshape($a,$k,:),dims=1)|> vec ))

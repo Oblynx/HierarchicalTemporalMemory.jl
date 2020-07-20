@@ -208,7 +208,7 @@ mutable struct DistalSynapses
   segCol::SparseMatrixCSC{Bool,Int}      # Nseg x Ncol
   cellϵcol::Int
 end
-cellXseg(s::DistalSynapses)= s.neurSeg
+NS(s::DistalSynapses)= s.neurSeg
 col2seg(s::DistalSynapses,col::Int)= s.segCol[:,col].nzind
 col2seg(s::DistalSynapses,col)= rowvals(s.segCol[:,col])
 col2cell(col,cellϵcol)= (col-1)*cellϵcol+1 : col*cellϵcol
@@ -240,10 +240,10 @@ end
 function get_grow__winseg_wincell!(s,WC, Πₛ,A, B,ovp_Mₛ,θ_stimulus_learn)
   WS_activecol= winningSegments_activecol(s,Πₛ,A)
   WS_burstcol= maxsegϵburstcol!(s,B,ovp_Mₛ,θ_stimulus_learn)
-  Nseg= size(s.cellSeg,2)
+  Nseg= size(s.neurSeg,2)
   WS= (@> WS_activecol padfalse(Nseg)) .| WS_burstcol
   # Update winner cells with entries from bursting columns
-  WC[cellXseg(s)*WS_burstcol.>0].= true
+  WC[NS(s)*WS_burstcol.>0].= true
   return WS
 end
 growsynapses!(s, WC::CellActivity,WS, ovp_Mₛ,synapseSampleSize,init_permanence)= begin
@@ -252,7 +252,7 @@ growsynapses!(s, WC::CellActivity,WS, ovp_Mₛ,synapseSampleSize,init_permanence
 end
 function _growsynapses!(s, WC,WS, ovp_Mₛ,synapseSampleSize,init_permanence)
   Nnewsyn(ovp)= max(0,synapseSampleSize - ovp)
-  Nseg= size(s.cellSeg,2)
+  Nseg= size(s.neurSeg,2)
   psampling_newsyn= min.(1.0, Nnewsyn.((@> ovp_Mₛ padfalse(Nseg))[WS]) ./ length(WC))
   selectedWC= similar(WC)
 
@@ -260,13 +260,13 @@ function _growsynapses!(s, WC,WS, ovp_Mₛ,synapseSampleSize,init_permanence)
     # Bernoulli sampling from WC with mean sample size == Nnewsyn
     randsubseq!(selectedWC,WC,p)
     # Grow new synapses (percolumn manual | setindex percolumn | setindex WC,WS,sparse_V)
-    s.synapses[selectedWC, seg_i].= init_permanence
+    s.Dd[selectedWC, seg_i].= init_permanence
   end
 end
 
 # If a cell was previously depolarized and now becomes active, the segments that caused
 # the depolarization are winning.
-winningSegments_activecol(synapses,Πₛ,A)= Πₛ .& (cellXseg(synapses)'A .>0)
+winningSegments_activecol(synapses,Πₛ,A)= Πₛ .& (NS(synapses)'A .>0)
 # If a cell is part of a bursting column, the segment in the column with the highest
 # overlap wins.
 # Foreach bursting col, find the best matching segment or grow one if needed
@@ -275,7 +275,7 @@ maxsegϵburstcol!(synapses,B,ovp_Mₛ,θ_stimulus_learn)= begin
   maxsegs= Vector{Option{Int}}(undef,length(burstingCols))
   map!(col->bestmatch(synapses,col,ovp_Mₛ,θ_stimulus_learn), maxsegs, burstingCols)
   growseg!(synapses,maxsegs,burstingCols)
-  Nseg= size(cellXseg(synapses),2)
+  Nseg= size(NS(synapses),2)
   @> maxsegs bitarray(Nseg)
 end
 
@@ -288,7 +288,7 @@ function bestmatch(synapses,col,ovp_Mₛ,θ_stimulus_learn)
 end
 # Cell with least segments
 function leastusedcell(synapses,col)
-  cellsWithSegs= cellXseg(synapses)[:,col2seg(synapses,col)].rowval|> countmap_empty
+  cellsWithSegs= NS(synapses)[:,col2seg(synapses,col)].rowval|> countmap_empty
   cellsWithoutSegs= setdiff(col2cell(col,synapses.cellϵcol), cellsWithSegs|> keys)
   isempty(cellsWithoutSegs) ?
       findmin(cellsWithSegs)[2] : rand(cellsWithoutSegs)
@@ -299,7 +299,7 @@ function growseg!(synapses::DistalSynapses,maxsegs::Vector{Option{Int}},bursting
   cellsToGrow= map(col-> leastusedcell(synapses,col), burstingcolidx[isnothing.(maxsegs)])
   columnsToGrow= cell2col(cellsToGrow,synapses.cellϵcol)
   Ncell= size(synapses.Dd,1); Ncol= size(synapses.segCol,2)
-  Nseg_before= size(cellXseg(synapses),2)
+  Nseg_before= size(NS(synapses),2)
   Nseggrow= length(cellsToGrow)  # grow 1 seg per cell
   _grow_synapse_matrices!(synapses,columnsToGrow,cellsToGrow,Nseggrow)
   # Replace in maxsegs, `nothing` with something :-)

@@ -63,8 +63,8 @@ similar to [source]()
 
 ## Dimensions
 - `Nc`: number of columns
-- `cell∈col`: cells per column (`k`)
-- `Nₙ`: ``= \mathit{cell∈col} \mathit{Nc}`` neurons in layer
+- `k`: cells per column
+- `Nₙ`: ``= k \\mathit{Nc}`` neurons in layer
 
 ## Tuning
 
@@ -72,8 +72,8 @@ similar to [source]()
 @with_kw struct TMParams
   # dimensions
   Nc::Int                  = 4096;    @assert Nc>0
-  cellϵcol::Int            = 16;      @assert cellϵcol>0
-  Nₙ::Int                  = Nc*cellϵcol;    @assert Nₙ>0
+  k::Int                   = 16;      @assert k>0
+  Nₙ::Int                  = k*Nc;    @assert Nₙ>0
 
   # tuning
   p⁺_01::Float32           = .12;     @assert 0<=p⁺_01<=1

@@ -68,7 +68,7 @@ struct TemporalMemory
   previous::TMState
 
   function TemporalMemory(params::TMParams)
-    @unpack Nₙ, Nc, cellϵcol = params
+    @unpack Nₙ, Nc, k = params
     Nseg_init= 0
     new(params,
         DistalSynapses(
@@ -76,7 +76,7 @@ struct TemporalMemory
           spzeros(Bool,Nₙ,Nseg_init),
           spzeros(Bool,Nₙ,Nseg_init),
           spzeros(Bool,Nseg_init,Nc),
-          cellϵcol),
+          k),
         TMState((
           A=falses(Nₙ), Π=falses(Nₙ), WC=falses(Nₙ),
           Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init),
@@ -87,10 +87,10 @@ end
 
 # Given a column activation pattern `c` (SP output), step the TM
 function step!(tm::TemporalMemory, c::CellActivity)
-  A,B,WC= tm_activation(c,tm.previous.Π,tm.params)
+  A,B,WC= tm_activate(tm, c)
   Π,Πₛ,Mₛ,ovp_Mₛ= tm_prediction(tm.distalSynapses,A,tm.params)
   step!(tm.distalSynapses,WC, tm.previous.state,A,B,tm.params)
-  update_TMState!(tm.previous,Nseg=size(tm.distalSynapses.cellSeg,2),
+  update_TMState!(tm.previous,Nseg=size(tm.distalSynapses.neurSeg,2),
                   A=A,Π=Π,WC=WC,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
   return A,Π, B
 end
@@ -99,13 +99,30 @@ end
 # N: num of columns, M: cellPerCol
 # a: [N] column activation (SP output)
 # Π: [MN] predictions at t-1
-function tm_activation(c,Π,params)
-  k= params.cellϵcol; Ncol= length(c)
-  burst()= c .& .!@percolumn(any,Π, k)
-  activate_predicted()= @percolumn(&,Π,c, k)
+"""
+`tm_activate(tm::TemporalMemory, c)` calculates
+
+1. which minicolumns burst,
+2. which neurons in the layer are activated
+3. which become predictive
+
+for minicolumn activation `c` (size `Nc`) given by the [`SpatialPooler`](@ref).
+
+Uses the previously predictive neurons `Π` (size `Nₙ`) from the TM's state.
+"""
+function tm_activate(tm::TemporalMemory, c)
+  @unpack Nc, k = tm.params
+  Π = tm.previous.Π
+
+  # bursting columns (Nc)
+  burst(c,Π)= c .& .!@percolumn(any, Π, k)
+  # columns with a predictive neuron (k × Nc)
+  predicted(c,Π)= @percolumn(&,Π,c, k)
+  # activation for the whole layer given the predicted/bursting neurons
   activate(A_pred, B)= (A_pred .| B')|> vec
-  B= burst()
-  A_pred= activate_predicted()
+  # cache parts of the output because they're used 2 times
+  B= burst(c,Π)           # Nc
+  A_pred= predicted(c,Π)  # k × Nc
   return activate(A_pred,B), B, A_pred|>vec
 end
 
@@ -117,7 +134,7 @@ function tm_prediction(distalSynapses,A, params)
   @unpack θ_stimulus_activate, θ_stimulus_learn = params
   segOvp(A,D)= D'*A
   # Cell depolarization (prediction)
-  Π(Πₛ)= cellXseg(distalSynapses)*Πₛ .> 0  # NOTE: params.θ_segment_act instead of 0
+  Π(Πₛ)= NS(distalSynapses)*Πₛ .> 0  # NOTE: params.θ_segment_act instead of 0
   # OPTIMIZE: update connected at learning
   D= connected(distalSynapses)
   # Overlap of connected segments
@@ -125,7 +142,7 @@ function tm_prediction(distalSynapses,A, params)
   # Segment depolarization (prediction)
   Πₛ= connected_segOvp .> θ_stimulus_activate
   # Sub-threshold segment stimulation sufficient for learning
-  matching_segOvp= segOvp(A,distalSynapses.synapses)
+  matching_segOvp= segOvp(A,distalSynapses.Dd)
   Mₛ= matching_segOvp .> θ_stimulus_learn
   return Π(Πₛ),Πₛ,Mₛ,matching_segOvp
 end
