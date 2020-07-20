@@ -203,18 +203,19 @@ This type defines both the synapses themselves and the neuron's dendrites.
 """
 mutable struct DistalSynapses
   Dd::SparseSynapses                     # Nn x Nseg
+  # adjacency matrices
   connected::SparseMatrixCSC{Bool,Int}
   neurSeg::SparseMatrixCSC{Bool,Int}     # Nn x Nseg
   segCol::SparseMatrixCSC{Bool,Int}      # Nseg x Ncol
-  cellϵcol::Int
+  k::Int
 end
 NS(s::DistalSynapses)= s.neurSeg
 SC(s::DistalSynapses)= s.segCol
 
 col2seg(s::DistalSynapses,col::Int)= s.segCol[:,col].nzind
 col2seg(s::DistalSynapses,col)= rowvals(s.segCol[:,col])
-col2cell(col,cellϵcol)= (col-1)*cellϵcol+1 : col*cellϵcol
-cell2col(cells,cellϵcol)= @. (cells-1) ÷ cellϵcol + 1
+col2cell(col,k)= (col-1)*k+1 : col*k
+cell2col(cells,k)= @. (cells-1) ÷ k + 1
 Wd(s::DistalSynapses)= s.connected
 
 # Adapt distal synapses based on TM state at t-1 and current cell/column activity
@@ -291,7 +292,7 @@ end
 # Cell with least segments
 function leastusedcell(synapses,col)
   cellsWithSegs= NS(synapses)[:,col2seg(synapses,col)].rowval|> countmap_empty
-  cellsWithoutSegs= setdiff(col2cell(col,synapses.cellϵcol), cellsWithSegs|> keys)
+  cellsWithoutSegs= setdiff(col2cell(col,synapses.k), cellsWithSegs|> keys)
   isempty(cellsWithoutSegs) ?
       findmin(cellsWithSegs)[2] : rand(cellsWithoutSegs)
 end
@@ -299,7 +300,7 @@ end
 # OPTIMIZE add many segments together for efficiency?
 function growseg!(synapses::DistalSynapses,maxsegs::Vector{Option{Int}},burstingcolidx)
   cellsToGrow= map(col-> leastusedcell(synapses,col), burstingcolidx[isnothing.(maxsegs)])
-  columnsToGrow= cell2col(cellsToGrow,synapses.cellϵcol)
+  columnsToGrow= cell2col(cellsToGrow,synapses.k)
   Ncell= size(synapses.Dd,1); Ncol= size(synapses.segCol,2)
   Nseg_before= size(NS(synapses),2)
   Nseggrow= length(cellsToGrow)  # grow 1 seg per cell
