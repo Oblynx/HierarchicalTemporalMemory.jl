@@ -1,6 +1,7 @@
 """
-Iterator transformations, like filters, don't keep the length info.
-`LengthfulIter` is a wrapper that allows length info known programmatically to be used.
+`LengthfulIter` is an iterator wrapper that allows length info known programmatically to be used.
+It's used because iterator transformations, like filters, don't keep the length info,
+which might however be known to the programmer.
 """
 struct LengthfulIter{T,IterT}
   iter::IterT
@@ -23,7 +24,7 @@ end
 _collect(itr,n,elT)= Base.collect(itr)
 
 """
-Iterate over the trues of a BitArray
+`TruesOf` iterates over the trues of a `BitArray`
 
 # Examples
 ```jldoctest; setup= :(import Random; Random.seed!(5))
@@ -67,7 +68,7 @@ sparse_map(f, s::SparseMatrixCSC,columnIdx)=
   end
 
 """
-@percolumn(f,a,b,k,Ncol)
+`@percolumn(f,a,b,k,Ncol)`
 
 Macro to apply `f` elementwise and concatenate the results.
 - `a`: vector of size [`Ncol`*`k`], column-major
@@ -77,7 +78,7 @@ macro percolumn(f,a,b,k)
   esc(:( $f.(reshape($a,$k,:), $b') ))
 end
 """
-@percolumn(reduce,a,k,Ncol)
+`@percolumn(reduce,a,k,Ncol)`
 
 Macro to `reduce` `a` per column.
 """
@@ -85,7 +86,7 @@ macro percolumn(reduce,a,k)
   esc(:( $reduce(reshape($a,$k,:),dims=1)|> vec ))
 end
 """
-    bitarray(dims, idx)
+`bitarray(dims, idx)`
 
 Create a bitarray with `true` only at `idx`.
 """

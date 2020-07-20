@@ -64,6 +64,10 @@ similar to [source]()
 ## Dimensions
 - `Nc`: number of columns
 - `cell∈col`: cells per column (`k`)
+- `Nₙ`: ``= \mathit{cell∈col} \mathit{Nc}`` neurons in layer
+
+## Tuning
+
 """
 @with_kw struct TMParams
   # dimensions

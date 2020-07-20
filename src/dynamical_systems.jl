@@ -44,7 +44,8 @@ end
 # ## Proximal Synapses
 
 """
-ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection} are the feedforward connections of 2 neuron layers.
+ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection} are the feedforward connections between
+2 neuron layers, which can activate neurons and cause them to fire.
 
 Used in the context of the [`SpatialPooler`](@ref).
 
@@ -187,6 +188,19 @@ end
 # ## Distal synapses for the TM
 # (assume the same learning rule governs all types of distal synapses)
 
+"""
+`DistalSynapses` are lateral connections within a neuron layer that attach to the dendrites of neurons,
+not directly to the soma (neuron's center), and can therefore **depolarize** neurons but *can't activate them.*
+Compare with [`ProximalSynapses`](@ref).
+
+Used in the context of the [`TemporalMemory`](@ref).
+
+# Description
+
+Neurons have multiple signal integration zones: the soma, proximal dendrites, apical dendrites.
+Signals are routed to the proximal dendrites through distal synapses.
+This type defines both the synapses themselves and the neuron's dendrites.
+"""
 mutable struct DistalSynapses
   synapses::SparseSynapses               # Ncell x Nseg
   connected::SparseMatrixCSC{Bool,Int}
