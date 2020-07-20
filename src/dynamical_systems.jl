@@ -209,11 +209,13 @@ mutable struct DistalSynapses
   cellϵcol::Int
 end
 NS(s::DistalSynapses)= s.neurSeg
+SC(s::DistalSynapses)= s.segCol
+
 col2seg(s::DistalSynapses,col::Int)= s.segCol[:,col].nzind
 col2seg(s::DistalSynapses,col)= rowvals(s.segCol[:,col])
 col2cell(col,cellϵcol)= (col-1)*cellϵcol+1 : col*cellϵcol
 cell2col(cells,cellϵcol)= @. (cells-1) ÷ cellϵcol + 1
-connected(s::DistalSynapses)= s.connected
+Wd(s::DistalSynapses)= s.connected
 
 # Adapt distal synapses based on TM state at t-1 and current cell/column activity
 # A: [Ncell] cell activity
