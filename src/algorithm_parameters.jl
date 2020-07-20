@@ -60,6 +60,10 @@ end
 """
 `TMParams` holds the algorithm parameters for a Temporal Memory with nomenclature
 similar to [source]()
+
+## Dimensions
+- `Nc`: number of columns
+- `cell∈col`: cells per column (`k`)
 """
 @with_kw struct TMParams
   # dimensions

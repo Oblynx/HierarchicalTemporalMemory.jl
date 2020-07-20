@@ -2,6 +2,14 @@
 #include("algorithm_parameters.jl")
 #include("dynamical_systems.jl")
 
+"""
+`TMState` is a named tuple of the state variables of a temporal memory.
+
+- `A`: active neurons
+- `Π`: predictive neurons
+
+TODO
+"""
 mutable struct TMState
   state::NamedTuple{
     (:A, :Π, :WC, :Πₛ, :Mₛ, :ovp_Mₛ),  # Ncell, Ncell, Ncell, Nseg, Nseg, Nseg
@@ -25,10 +33,32 @@ When considering a neuron layer with proximal and distal synapses, the spatial p
 activate and learn the proximal synapses, while the temporal memory is a way to activate and learn
 the distal synapses.
 
+## High-order predictions and Ambiguity
+
+The [neurons-thousand-synapses paper](https://www.frontiersin.org/articles/10.3389/fncir.2016.00023/full) describes the
+Temporal Memory's properties, and especially the ability to
+- make "high-order" predictions, based on previous inputs potentially going far back in time
+- represent ambiguity in the form of simultaneous predictions
+
+For more information see figures 2,3 in the paper.
+
 # TM activation
 
-An SDR input activates some minicolumns of the neuron layer.
+Overview of the temporal memory's process:
 
+1. Activate neurons (fire, proximal synapses)
+2. Predict neurons (depolarize, distal/apical synapses)
+3. Learn distal/apical synapses:
+    - adapt existing synapses
+    - create new synapses/dendrites
+
+## Activation
+
+An SDR input activates some minicolumns of the neuron layer.
+If some neurons in the minicolum were predicted at the previous step, they activate faster than the rest and inhibit them.
+If no neuron was predicted, all the neurons fire (minicolumn bursting).
+
+TODO
 ---
 See also: [`TMState`](@ref)
 """
@@ -78,6 +108,7 @@ function tm_activation(c,Π,params)
   A_pred= activate_predicted()
   return activate(A_pred,B), B, A_pred|>vec
 end
+
 # Given the TM cell activity and which columns are bursting, make TM predictions
 # B: [N] bursting columns
 # A: [MN] TM activation at t
