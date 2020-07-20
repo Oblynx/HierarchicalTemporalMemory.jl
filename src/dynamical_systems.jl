@@ -202,13 +202,13 @@ Signals are routed to the proximal dendrites through distal synapses.
 This type defines both the synapses themselves and the neuron's dendrites.
 """
 mutable struct DistalSynapses
-  synapses::SparseSynapses               # Ncell x Nseg
+  Dd::SparseSynapses                     # Nn x Nseg
   connected::SparseMatrixCSC{Bool,Int}
-  cellSeg::SparseMatrixCSC{Bool,Int}     # Ncell x Nseg
+  neurSeg::SparseMatrixCSC{Bool,Int}     # Nn x Nseg
   segCol::SparseMatrixCSC{Bool,Int}      # Nseg x Ncol
   cellϵcol::Int
 end
-cellXseg(s::DistalSynapses)= s.cellSeg
+cellXseg(s::DistalSynapses)= s.neurSeg
 col2seg(s::DistalSynapses,col::Int)= s.segCol[:,col].nzind
 col2seg(s::DistalSynapses,col)= rowvals(s.segCol[:,col])
 col2cell(col,cellϵcol)= (col-1)*cellϵcol+1 : col*cellϵcol
@@ -224,16 +224,16 @@ function step!(s::DistalSynapses,WC,previous::NamedTuple,A,B, params)
   # Learn synapse permanences according to Hebbian learning rule
   sparse_foreach((scol,cell_i)->
                     learn_sparsesynapses!(scol,cell_i, previous.A,params.p⁺,params.p⁻),
-                 s.synapses, WS)
+                 s.Dd, WS)
   # Decay unused synapses
-  decayS= padfalse(previous.Mₛ,length(WS)) .& (s.cellSeg'*(.!A))
+  decayS= padfalse(previous.Mₛ,length(WS)) .& (s.neurSeg'*(.!A))
   sparse_foreach((scol,cell_i)->
                     learn_sparsesynapses!(scol,cell_i, .!previous.A,zero(𝕊𝕢),params.LTD_p⁻),
-                 s.synapses, decayS)
+                 s.Dd, decayS)
   growsynapses!(s, previous.WC,WS, previous.ovp_Mₛ,params.synapseSampleSize,params.init_permanence)
   # Update cache of connected synapses
   #@inbounds s.connected[:,WS].= s.synapses[:,WS] .> params.θ_permanence
-  s.connected= s.synapses .> params.θ_permanence_dist
+  s.connected= s.Dd .> params.θ_permanence_dist
 end
 # Calculate and return WinningSegments, growing new segments where needed.
 #   Update WinnerCells with bursting columns.
@@ -298,7 +298,7 @@ end
 function growseg!(synapses::DistalSynapses,maxsegs::Vector{Option{Int}},burstingcolidx)
   cellsToGrow= map(col-> leastusedcell(synapses,col), burstingcolidx[isnothing.(maxsegs)])
   columnsToGrow= cell2col(cellsToGrow,synapses.cellϵcol)
-  Ncell= size(synapses.synapses,1); Ncol= size(synapses.segCol,2)
+  Ncell= size(synapses.Dd,1); Ncol= size(synapses.segCol,2)
   Nseg_before= size(cellXseg(synapses),2)
   Nseggrow= length(cellsToGrow)  # grow 1 seg per cell
   _grow_synapse_matrices!(synapses,columnsToGrow,cellsToGrow,Nseggrow)
@@ -307,9 +307,9 @@ function growseg!(synapses::DistalSynapses,maxsegs::Vector{Option{Int}},bursting
 end
 function _grow_synapse_matrices!(synapses::DistalSynapses,columnsToGrow,cellsToGrow,Nseggrow)
   synapses.segCol= vcat!!(synapses.segCol, columnsToGrow, trues(Nseggrow))
-  synapses.cellSeg= hcat!!(synapses.cellSeg, cellsToGrow,trues(Nseggrow))
+  synapses.neurSeg= hcat!!(synapses.neurSeg, cellsToGrow,trues(Nseggrow))
   synapses.connected= hcat!!(synapses.connected, cellsToGrow,falses(Nseggrow))
-  synapses.synapses= hcat!!(synapses.synapses, Nseggrow)
+  synapses.Dd= hcat!!(synapses.Dd, Nseggrow)
 end
 
 # [Dict] Count the frequency of occurence for each element in x
