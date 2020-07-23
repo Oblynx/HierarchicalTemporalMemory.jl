@@ -52,15 +52,24 @@ end
 Base.collect(B::Truesof)= collect(B.b)
 
 """
-    sparse_foreach(f, s::SparseMatrixCSC,columnIdx)
+`sparse_foreach(f, s::SparseMatrixCSC,columnIdx)` iterates over the columns of the sparse matrix `s` specified by
+`columnIdx` and applies `f(columnElt,columnRowIdx)` to each.
+Column elements are a @view into the nonzero elements at the given column of `s`.
 
-Iterate SparseMatrix `s` and apply `f` columnwise (`f(s,nzrange,rowvals)`)
+See also: [`sparse_map`](@ref)
 """
 sparse_foreach(f, s::SparseMatrixCSC,columnIdx)=
   foreach(Truesof(columnIdx)) do c
     ci= nzrange(s,c)
     f((@view nonzeros(s)[ci]),rowvals(s)[ci])
   end
+"""
+`sparse_map(f, s::SparseMatrixCSC,columnIdx)` maps each column of the sparse matrix `s` specified by
+`columnIdx` to `f(columnElt,columnRowIdx)`.
+Column elements are a @view into the nonzero elements at the given column of `s`.
+
+See also: [`sparse_foreach`](@ref)
+"""
 sparse_map(f, s::SparseMatrixCSC,columnIdx)=
   map(Truesof(columnIdx)) do c
     ci= nzrange(s,c)
@@ -85,6 +94,7 @@ Macro to `reduce(a)` per column `k`.
 macro percolumn(reduce,a,k)
   esc(:( $reduce(reshape($a,$k,:),dims=1)|> vec ))
 end
+
 """
 `bitarray(dims, idx)`
 

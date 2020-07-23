@@ -7,12 +7,12 @@
 
 - `A`: active neurons
 - `Π`: predictive neurons
-
+- `WN`: winning neurons
 TODO
 """
 mutable struct TMState
   state::NamedTuple{
-    (:A, :Π, :WC, :Πₛ, :Mₛ, :ovp_Mₛ),  # Ncell, Ncell, Ncell, Nseg, Nseg, Nseg
+    (:A, :Π, :WN, :Πₛ, :Mₛ, :ovp_Mₛ),  # Ncell, Ncell, Ncell, Nseg, Nseg, Nseg
     Tuple{CellActivity, CellActivity, CellActivity,
           BitArray{1}, BitArray{1}, Vector{Int}}
   }
@@ -79,7 +79,7 @@ struct TemporalMemory
           spzeros(Bool,Nseg_init,Nc),
           k),
         TMState((
-          A=falses(Nₙ), Π=falses(Nₙ), WC=falses(Nₙ),
+          A=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
           Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init),
           ovp_Mₛ=zeros(Nseg_init)
         )))
@@ -88,11 +88,12 @@ end
 
 # Given a column activation pattern `c` (SP output), step the TM
 function step!(tm::TemporalMemory, c::CellActivity)
-  A,B,WC= tm_activate(tm, c)
-  Π,Πₛ,Mₛ,ovp_Mₛ= tm_predict(tm, A)
-  step!(tm.distalSynapses,WC, tm.previous.state,A,B,tm.params)
+  α,B,WN= tm_activate(tm, c)
+  Π,Πₛ,Mₛ,ovp_Mₛ= tm_predict(tm, α)
+  #step!(tm.distalSynapses,WN, tm.previous.state,A,B,tm.params)
+  step!(tm.distalSynapses, tm,previous.WN,α, tm.previous.A,tm.previous.Mₛ,tm.previous.ovp_Mₛ, tm.params)
   update_TMState!(tm.previous,Nseg=size(tm.distalSynapses.neurSeg,2),
-                  A=A,Π=Π,WC=WC,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
+                  A=A,Π=Π,WN=WN,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
   return A,Π, B
 end
 
@@ -110,7 +111,9 @@ Uses also the previously predictive neurons `Π` (size `Nₙ`) from the TM's sta
 
 1. `a`: neuron activation (`Nₙ`)
 2. `B`: bursting minicolumns (`Nc`)
-3. `WC`: "winning" minicolumns (`Nc`) (have a predictive neuron)
+3. `WN`: "winning" neurons (`Nₙ`)
+
+See also: [`tm_predict`](@ref), [`DistalSynapses`](@ref)
 """
 function tm_activate(tm::TemporalMemory, c)
   @unpack Nc, k = tm.params
@@ -129,8 +132,8 @@ function tm_activate(tm::TemporalMemory, c)
 end
 
 """
-`tm_predict(tm::TemporalMemory, A)` calculates which neurons will be predictive at the next step
-given the currently active neurons `a`.
+`tm_predict(tm::TemporalMemory, α)` calculates which neurons will be predictive at the next step
+given the currently active neurons `α`.
 
 # Returns
 
@@ -139,16 +142,16 @@ given the currently active neurons `a`.
 3. `Mₛ`: matching dendritic segments (`Nₛ`) (learning)
 4. `ovp_Mₛ`: subthreshold-matching dendritic segments (`Nₛ`) (learning)
 """
-function tm_predict(tm::TemporalMemory, a)
+function tm_predict(tm::TemporalMemory, α)
   @unpack θ_stimulus_activate, θ_stimulus_learn = tm.params
   distal= tm.distalSynapses
 
   # Segment depolarization (prediction)
-  Πₛ= Wd(distal)'a .> θ_stimulus_activate
+  Πₛ= Wd(distal)'α .> θ_stimulus_activate
   # Neuron depolarization (prediction)
   Π(Πₛ)= NS(distal)*Πₛ .> 0  # NOTE: params.θ_segment_act instead of 0
   # Sub-threshold segment stimulation sufficient for learning
-  ovp_Mₛ= distal.Dd'a
+  ovp_Mₛ= distal.Dd'α
   Mₛ= ovp_Mₛ .> θ_stimulus_learn
   return Π(Πₛ),Πₛ, Mₛ,ovp_Mₛ
 end
