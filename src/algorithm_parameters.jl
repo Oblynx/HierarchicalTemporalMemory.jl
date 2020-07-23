@@ -82,7 +82,7 @@ similar to [source]()
   p⁺::𝕊𝕢                 = round(𝕊𝕢,p⁺_01*typemax(𝕊𝕢))
   p⁻::𝕊𝕢                 = round(𝕊𝕢,p⁻_01*typemax(𝕊𝕢))
   LTD_p⁻::𝕊𝕢             = round(𝕊𝕢,LTD_p⁻_01*typemax(𝕊𝕢))
-  θ_permanence_dist::𝕊𝕢  = round(𝕊𝕢,.5typemax(𝕊𝕢))
+  θ_permanence::𝕊𝕢       = round(𝕊𝕢,.5typemax(𝕊𝕢))
   init_permanence::𝕊𝕢    = round(𝕊𝕢,.4typemax(𝕊𝕢))
   synapseSampleSize::Int   = 25;      @assert synapseSampleSize>0
   θ_stimulus_activate::Int = 14;      @assert θ_stimulus_activate>0

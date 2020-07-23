@@ -59,8 +59,9 @@ If some neurons in the minicolum were predicted at the previous step, they activ
 If no neuron was predicted, all the neurons fire (minicolumn bursting).
 
 TODO
+
 ---
-See also: [`TMState`](@ref)
+See also: [`TMParams`](@ref) for parameter and symbol description, [`DistalSynapses`](@ref), [`TMState`](@ref)
 """
 struct TemporalMemory
   params::TMParams

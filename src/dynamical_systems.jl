@@ -197,26 +197,76 @@ Used in the context of the [`TemporalMemory`](@ref).
 
 # Description
 
+### Synapses
+
 Neurons have multiple signal integration zones: the soma, proximal dendrites, apical dendrites.
-Signals are routed to the proximal dendrites through distal synapses.
+Signals are routed to the proximal dendrites through *distal synapses*.
 This type defines both the synapses themselves and the neuron's dendrites.
+The synapses themselves, like the [`ProximalSynapses`](@ref), are binary connections without weights.
+They have a **permanence value**, and above a threshold they are connected.
+
+The synapses can be represented as an adjacency matrix of dimensions `Nₙ × Nₛ`:
+presynaptic neurons -> postsynaptic dendritic segments.
+This matrix is derived from the synapse permanence matrix ``D_d ∈ \\mathit{𝕊𝕢}^{Nₙ × Nₛ}``,
+which is **sparse** (eg 0.5% synapses).
+This affects the implementation of all low-level operations.
+
+### Dendritic segments
+
+Neurons have multiple dendritic segments carrying the distal synapses, each sufficient to depolarize the neuron (make it predictive).
+The neuron/segment adjacency matrix `neurSeg` (aka `NS`) also has dimensions `Nₙ × Nₛ`.
+
+## Learning
+
+Instead of being randomly initialized like the proximal synapses, distal synapses and dendrite segments are grown on demand:
+when minicolumns can't predict their activation and burst, they trigger a growth process.
+
+The synaptic permanence itself adapts similar to the proximal synapses: synapses that correctly predict are increased,
+synapses that incorrectly predict are decreased.
+However it's a bit more complicated to define the successful distal syapses than the proximal synapses.
+"Winning segments" `WS` will adapt their synapses towards "winning neurons" `WN`.
+Since synapses are considered directional, neurons are always presynaptic and segments postsynaptic.
+
+Winning segments are those that were predicted and then activated.
+Also, for every bursting minicolumn the dendrite that best "matches" the input will become winner.
+If there is no sufficiently matching dendrite, a new onw will grow on the neuron that has the fewest.
+
+Winning neurons are again those that were predicted and then activated.
+Among the bursting minicolumns, the neurons bearing the winning segments are the winners.
+Both definitions of winners are aligned with establishing a causal relationship: prediction -> activation.
+
+New synapses grow from `WS` towards a random sample of `WN` at every step.
+Strongly matching segments have a lower chance to grow new synapses than weakly matching segments.
+
+## Caching
+
+The state of the DistalSynapses is determined by the 2 matrices ``D_d, \\mathit{NS}``.
+A few extra matrices are filled in over the evolution of the distal synapses to accelerate the computations:
+- `connected` caches `Dd > θ_permanence`
+- `segCol` caches the segment - column map (aka `SC`)
 """
 mutable struct DistalSynapses
-  Dd::SparseSynapses                     # Nn x Nseg
-  # adjacency matrices
-  connected::SparseMatrixCSC{Bool,Int}
-  neurSeg::SparseMatrixCSC{Bool,Int}     # Nn x Nseg
-  segCol::SparseMatrixCSC{Bool,Int}      # Nseg x Ncol
+  # synapse permanence
+  Dd::SparseSynapses                     # Nn × Nseg
+  # neurons - segments
+  neurSeg::SparseMatrixCSC{Bool,Int}     # Nn × Nseg
+  # caches
+  connected::SparseMatrixCSC{Bool,Int}   # Nn × Nsed
+  segCol::SparseMatrixCSC{Bool,Int}      # Nseg × Ncol
   k::Int
 end
+# friendly names for the matrices
 NS(s::DistalSynapses)= s.neurSeg
 SC(s::DistalSynapses)= s.segCol
+Wd(s::DistalSynapses)= s.connected
 
+# segments belonging to columns
 col2seg(s::DistalSynapses,col::Int)= s.segCol[:,col].nzind
 col2seg(s::DistalSynapses,col)= rowvals(s.segCol[:,col])
+# neurons belonging to column
 col2cell(col,k)= (col-1)*k+1 : col*k
+# column for each cell
 cell2col(cells,k)= @. (cells-1) ÷ k + 1
-Wd(s::DistalSynapses)= s.connected
 
 # Adapt distal synapses based on TM state at t-1 and current cell/column activity
 # A: [Ncell] cell activity
@@ -236,7 +286,7 @@ function step!(s::DistalSynapses,WC,previous::NamedTuple,A,B, params)
   growsynapses!(s, previous.WC,WS, previous.ovp_Mₛ,params.synapseSampleSize,params.init_permanence)
   # Update cache of connected synapses
   #@inbounds s.connected[:,WS].= s.synapses[:,WS] .> params.θ_permanence
-  s.connected= s.Dd .> params.θ_permanence_dist
+  s.connected= s.Dd .> params.θ_permanence
 end
 # Calculate and return WinningSegments, growing new segments where needed.
 #   Update WinnerCells with bursting columns.
