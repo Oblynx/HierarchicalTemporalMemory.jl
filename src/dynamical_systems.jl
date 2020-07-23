@@ -287,10 +287,9 @@ cell2col(cells,k)= @. (cells-1) ÷ k + 1
 # A: [Ncell] cell activity
 # B: [Ncol] column activity
 # WC: [Ncell] current winner cells from predicted columns; add from bursting columns
-function step!(s::DistalSynapses, pWN,α, pα,pMₛ,povp_Mₛ, params)
+function step!(s::DistalSynapses, pWN,WS, α, pα,pMₛ,povp_Mₛ, params)
   @unpack p⁺,p⁻,LTD_p⁻,synapseSampleSize,init_permanence,θ_permanence = params
   # Learn synapse permanences according to Hebbian learning rule
-  WS= get_grow__winseg_wincell!(s,WN, pΠₛ,α, B,povp_Mₛ,params.θ_stimulus_learn)
   sparse_foreach((scol,cell_i)->
                     adapt_sparsesynapses!(scol,cell_i, pα, p⁺,p⁻),
                  s.Dd, WS)
@@ -304,18 +303,29 @@ function step!(s::DistalSynapses, pWN,α, pα,pMₛ,povp_Mₛ, params)
   s.connected= s.Dd .> θ_permanence
 end
 
+
 """
 `decayS(s::DistalSynapses,pMₛ,α)` are the dendritic segments that should decay according to LTD (long term depression).
 It's the segments that at the previous moment had enough potential synapses with active neurons to "match" the input (`pMₛ`),
 but didn't contribute to their neuron firing at this moment (they didn't activate strongly enough to depolarize it).
 """
-decayS(s::DistalSynapses,pMₛ,α)= (@> pMₛ padfalse(Nₛ(s))) .& (NS(s)'(.!α))
+decayS(s::DistalSynapses,pMₛ,α)= (@> pMₛ padfalse(Nₛ(s))) .& (NS(s)'*(.!α))
+
+"""
+`calculate_WS!(pΠₛ,povp_Mₛ, α,B)` finds the winning segments, growing new ones where necessary.
+"""
+function calculate_WS!(s::DistalSynapses, pΠₛ,povp_Mₛ, α,B, θ_stimulus_learn)
+  WS_pred= WS_predictedcol(s,pΠₛ,α)
+  WS_burst= WS_burstcol!(s,B,povp_Mₛ,θ_stimulus_learn)
+  WS= (@> WS_pred padfalse(Nₛ(s))) .| WS_burst
+  return (WS, WS_burst)
+end
 
 ## Calculate the winning segments WS
 
 # If a cell was previously depolarized and now becomes active, the segments that caused
 # the depolarization are winning.
-WS_activecol(s::DistalSynapses,pΠₛ,α)= pΠₛ .& (NS(s)'α .>0)
+WS_predictedcol(s::DistalSynapses,pΠₛ,α)= pΠₛ .& (NS(s)'α .>0)
 # If a cell is part of a bursting column, the segment in the column with the highest
 # overlap wins.
 # Foreach bursting col, find the best matching segment or grow one if needed
@@ -327,14 +337,6 @@ WS_burstcol!(s::DistalSynapses,B, povp_Mₛ,θ_stimulus_learn)= begin
   @> maxsegs bitarray(Nₛ(s))
 end
 
-function calculate_WS!(pΠₛ,povp_Mₛ, α,B)
-  WS_burstcol= WS_burstcol!(s,B,povp_Mₛ,θ_stimulus_learn)
-  WS= (@> WS_activecol(s,Πₛ,A) padfalse(Nseg)) .| WS_burstcol
-  # Update winner cells with entries from bursting columns
-  WC[NS(s)*WS_burstcol.>0].= true
-  return WS
-end
-
 # Best matching segment for column - or `nothing`
 function bestmatch(s::DistalSynapses,col, povp_Mₛ,θ_stimulus_learn)
   segs= col2seg(s,col)
@@ -343,29 +345,20 @@ function bestmatch(s::DistalSynapses,col, povp_Mₛ,θ_stimulus_learn)
   m > θ_stimulus_learn ? segs[i] : nothing
 end
 
-# Calculate and return WinningSegments, growing new segments where needed.
-#   Update WinnerCells with bursting columns.
-function get_grow__winseg_wincell!(s,WC, Πₛ,A, B,ovp_Mₛ,θ_stimulus_learn)
-  WS_burstcol= WS_burstcol!(s,B,ovp_Mₛ,θ_stimulus_learn)
-  WS= (@> WS_activecol(s,Πₛ,A) padfalse(Nseg)) .| WS_burstcol
-  # Update winner cells with entries from bursting columns
-  WC[NS(s)*WS_burstcol.>0].= true
-  return WS
+growsynapses!(s::DistalSynapses, pWN::CellActivity,WS, povp_Mₛ, synapseSampleSize,init_permanence)= begin
+  pWN= findall(pWN)
+  !isempty(pWN) && _growsynapses!(s, pWN,WS, povp_Mₛ,synapseSampleSize,init_permanence)
 end
-growsynapses!(s, WC::CellActivity,WS, ovp_Mₛ,synapseSampleSize,init_permanence)= begin
-  WC= findall(WC)
-  !isempty(WC) && _growsynapses!(s, WC,WS, ovp_Mₛ,synapseSampleSize,init_permanence)
-end
-function _growsynapses!(s, WC,WS, ovp_Mₛ,synapseSampleSize,init_permanence)
+function _growsynapses!(s::DistalSynapses, pWN,WS, povp_Mₛ, synapseSampleSize,init_permanence)
   Nnewsyn(ovp)= max(0,synapseSampleSize - ovp)
-  psampling_newsyn= min.(1.0, Nnewsyn.((@> ovp_Mₛ padfalse(Nseg))[WS]) ./ length(WC))
-  selectedWC= similar(WC)
+  psampling_newsyn= min.(1.0, Nnewsyn.((@> povp_Mₛ padfalse(Nₛ(s)))[WS]) ./ length(pWN))
+  selectedWN= similar(pWN)
 
   foreach(Truesof(WS), psampling_newsyn) do seg_i, p
-    # Bernoulli sampling from WC with mean sample size == Nnewsyn
-    randsubseq!(selectedWC,WC,p)
-    # Grow new synapses (percolumn manual | setindex percolumn | setindex WC,WS,sparse_V)
-    s.Dd[selectedWC, seg_i].= init_permanence
+    # Bernoulli sampling from WN with mean sample size == Nnewsyn
+    randsubseq!(selectedWN,pWN,p)
+    # Grow new synapses (percolumn manual | setindex percolumn | setindex WN,WS,sparse_V)
+    s.Dd[selectedWN, seg_i].= init_permanence
   end
 end
 

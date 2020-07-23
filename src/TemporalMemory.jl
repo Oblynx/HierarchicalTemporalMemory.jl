@@ -5,22 +5,22 @@
 """
 `TMState` is a named tuple of the state variables of a temporal memory.
 
-- `A`: active neurons
+- `α`: active neurons
 - `Π`: predictive neurons
 - `WN`: winning neurons
 TODO
 """
 mutable struct TMState
   state::NamedTuple{
-    (:A, :Π, :WN, :Πₛ, :Mₛ, :ovp_Mₛ),  # Ncell, Ncell, Ncell, Nseg, Nseg, Nseg
+    (:α, :Π, :WN, :Πₛ, :Mₛ, :ovp_Mₛ),  # Ncell, Ncell, Ncell, Nseg, Nseg, Nseg
     Tuple{CellActivity, CellActivity, CellActivity,
           BitArray{1}, BitArray{1}, Vector{Int}}
   }
 end
 Base.getproperty(s::TMState, name::Symbol)= name === :state ?
     getfield(s,:state) : getproperty(getfield(s,:state),name)
-update_TMState!(s::TMState; Nseg,A,Π,WC,Πₛ,Mₛ,ovp_Mₛ)=
-    s.state= (A=A, Π= Π, WC= WC, Πₛ= padfalse(Πₛ,Nseg),
+update_TMState!(s::TMState; Nseg,α,Π,WN,Πₛ,Mₛ,ovp_Mₛ)=
+    s.state= (α=α, Π= Π, WN= WN, Πₛ= padfalse(Πₛ,Nseg),
               Mₛ= padfalse(Mₛ,Nseg), ovp_Mₛ= padfalse(ovp_Mₛ,Nseg))
 
 """
@@ -79,7 +79,7 @@ struct TemporalMemory
           spzeros(Bool,Nseg_init,Nc),
           k),
         TMState((
-          A=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
+          α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
           Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init),
           ovp_Mₛ=zeros(Nseg_init)
         )))
@@ -88,13 +88,19 @@ end
 
 # Given a column activation pattern `c` (SP output), step the TM
 function step!(tm::TemporalMemory, c::CellActivity)
-  α,B,WN= tm_activate(tm, c)
-  Π,Πₛ,Mₛ,ovp_Mₛ= tm_predict(tm, α)
-  #step!(tm.distalSynapses,WN, tm.previous.state,A,B,tm.params)
-  step!(tm.distalSynapses, tm,previous.WN,α, tm.previous.A,tm.previous.Mₛ,tm.previous.ovp_Mₛ, tm.params)
-  update_TMState!(tm.previous,Nseg=size(tm.distalSynapses.neurSeg,2),
-                  A=A,Π=Π,WN=WN,Πₛ=Πₛ,Mₛ=Mₛ,ovp_Mₛ=ovp_Mₛ)
-  return A,Π, B
+  s= tm.distalSynapses; p= tm.previous
+
+  α, B, WN= tm_activate(tm, c)
+  Π, Πₛ, Mₛ, ovp_Mₛ= tm_predict(tm, α)
+  # Learn
+  WS, WS_burst= calculate_WS!(s, tm.previous.Πₛ,tm.previous.ovp_Mₛ,α,B,
+      tm.params.θ_stimulus_learn)
+  # Update winner neurons with entries from bursting columns
+  WN[NS(s)*WS_burst .> 0].= true
+  step!(s, p.WN,WS, α, p.α,p.Mₛ,p.ovp_Mₛ, tm.params)
+  update_TMState!(p, Nseg=Nₛ(s),
+                  α=α, Π=Π, WN=WN, Πₛ=Πₛ, Mₛ=Mₛ, ovp_Mₛ=ovp_Mₛ)
+  return α,Π, B
 end
 
 """
