@@ -24,9 +24,9 @@ plot_mase(data,pred,pred_timesteps)= begin
             plot(crit_t2, [data[crit_t2] pred[crit_t2]], legend= :none),
             layout= (1,2)),
        layout= (3,1))|> display
-  @printf("Min 10-day MASE: %.2f\n",minimum(errormetric))
+  @info @sprintf("Min 10-day MASE: %.2f\n",minimum(errormetric))
 end
-display_evaluation(t,sp,sp_activity,spDims)= println("t=$t")
+display_evaluation(t,sp,sp_activity,spDims)= @info("t=$t")
 process_data!(tN,data,encParams,sp,tm,decoder)=
   for t in 1:tN
     z,a,power_bucket= _process_sp(t,tN,data,encParams,sp,display_evaluation)

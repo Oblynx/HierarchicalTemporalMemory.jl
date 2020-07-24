@@ -345,23 +345,23 @@ function bestmatch(s::DistalSynapses,col, povp_Mₛ,θ_stimulus_learn)
   m > θ_stimulus_learn ? segs[i] : nothing
 end
 
-growsynapses!(s::DistalSynapses, pWN::CellActivity,WS, povp_Mₛ, synapseSampleSize,init_permanence)= begin
-  pWN= findall(pWN)
-  !isempty(pWN) && _growsynapses!(s, pWN,WS, povp_Mₛ,synapseSampleSize,init_permanence)
-end
-function _growsynapses!(s::DistalSynapses, pWN,WS, povp_Mₛ, synapseSampleSize,init_permanence)
-  Nnewsyn(ovp)= max(0,synapseSampleSize - ovp)
-  psampling_newsyn= min.(1.0, Nnewsyn.((@> povp_Mₛ padfalse(Nₛ(s)))[WS]) ./ length(pWN))
-  selectedWN= similar(pWN)
+function growsynapses!(s::DistalSynapses, pWN::CellActivity,WS, povp_Mₛ, synapseSampleSize,init_permanence)
+  _growsynapses!(pWN)= begin
+    Nnewsyn(ovp)= max(0,synapseSampleSize - ovp)
+    psampling_newsyn= min.(1.0, Nnewsyn.((@> povp_Mₛ padfalse(Nₛ(s)))[WS]) ./ length(pWN))
+    selectedWN= similar(pWN)
 
-  foreach(Truesof(WS), psampling_newsyn) do seg_i, p
-    # Bernoulli sampling from WN with mean sample size == Nnewsyn
-    randsubseq!(selectedWN,pWN,p)
-    # Grow new synapses (percolumn manual | setindex percolumn | setindex WN,WS,sparse_V)
-    s.Dd[selectedWN, seg_i].= init_permanence
+    foreach(Truesof(WS), psampling_newsyn) do seg_i, p
+      # Bernoulli sampling from WN with mean sample size == Nnewsyn
+      randsubseq!(selectedWN,pWN,p)
+      # Grow new synapses (percolumn manual | setindex percolumn | setindex WN,WS,sparse_V)
+      s.Dd[selectedWN, seg_i].= init_permanence
+    end
   end
-end
 
+  pWN= findall(pWN)
+  !isempty(pWN) && _growsynapses!(pWN)
+end
 # Cell with least segments
 # TODO: try Memoize.jl !
 function leastusedcell(s::DistalSynapses,col)
