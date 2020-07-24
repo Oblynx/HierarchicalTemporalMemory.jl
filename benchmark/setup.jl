@@ -37,7 +37,7 @@ function setupHTMexperiment(;
             p⁻_01=0.08,
             LTD_p⁻_01= 0.012
           ),
-      dataFilepath= "../test/test_data/gym_power_benchmark-extended.csv")
+      dataFilepath= "test/test_data/gym_power_benchmark-extended.csv")
   data= CSV.read(dataFilepath)
   encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
                   encoder_size=inputDims[1], w=(34,35,35))
