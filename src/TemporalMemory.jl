@@ -8,7 +8,9 @@
 - `α`: active neurons
 - `Π`: predictive neurons
 - `WN`: winning neurons
-TODO
+- `Πₛ`: predictive dendritic segments (to calculate winning segments)
+- `Mₛ`: matching dendritic segments (didn't receive enough input to activate, but enough to learn)
+- `ovp_Mₛ`:
 """
 mutable struct TMState
   state::NamedTuple{
@@ -77,7 +79,7 @@ struct TemporalMemory
           spzeros(Bool,Nₙ,Nseg_init),
           spzeros(Bool,Nₙ,Nseg_init),
           spzeros(Bool,Nseg_init,Nc),
-          k),
+          k, DistalSynapseParams(params)),
         TMState((
           α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
           Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init),
@@ -92,12 +94,12 @@ function step!(tm::TemporalMemory, c::CellActivity)
 
   α, B, WN= tm_activate(tm, c)
   Π, Πₛ, Mₛ, ovp_Mₛ= tm_predict(tm, α)
+
   # Learn
-  WS, WS_burst= calculate_WS!(s, tm.previous.Πₛ,tm.previous.ovp_Mₛ,α,B,
-      tm.params.θ_stimulus_learn)
+  WS, WS_burst= calculate_WS!(s, p.Πₛ,p.ovp_Mₛ,α,B)
   # Update winner neurons with entries from bursting columns
   WN[NS(s)*WS_burst .> 0].= true
-  step!(s, p.WN,WS, α, p.α,p.Mₛ,p.ovp_Mₛ, tm.params)
+  step!(s, p.WN,WS, α, p.α,p.Mₛ,p.ovp_Mₛ)
   update_TMState!(p, Nseg=Nₛ(s),
                   α=α, Π=Π, WN=WN, Πₛ=Πₛ, Mₛ=Mₛ, ovp_Mₛ=ovp_Mₛ)
   return α,Π, B

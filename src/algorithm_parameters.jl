@@ -104,3 +104,20 @@ similar to [source]()
   # feature gates
   enable_learning::Bool    = true
 end
+
+# Created from TMParams
+@with_kw struct DistalSynapseParams
+  p⁺::𝕊𝕢                 = round(𝕊𝕢,p⁺_01*typemax(𝕊𝕢))
+  p⁻::𝕊𝕢                 = round(𝕊𝕢,p⁻_01*typemax(𝕊𝕢))
+  LTD_p⁻::𝕊𝕢             = round(𝕊𝕢,LTD_p⁻_01*typemax(𝕊𝕢))
+  θ_permanence::𝕊𝕢       = round(𝕊𝕢,.5typemax(𝕊𝕢))
+  init_permanence::𝕊𝕢    = round(𝕊𝕢,.4typemax(𝕊𝕢))
+  synapseSampleSize::Int   = 25;      @assert synapseSampleSize>0
+  θ_stimulus_learn::Int    = 12;      @assert 0 < θ_stimulus_learn
+end
+DistalSynapseParams(tmParams::TMParams)= begin
+  @unpack p⁺, p⁻, LTD_p⁻, θ_permanence,
+      init_permanence, synapseSampleSize, θ_stimulus_learn = tmParams
+  DistalSynapseParams(p⁺, p⁻, LTD_p⁻, θ_permanence,
+      init_permanence, synapseSampleSize, θ_stimulus_learn)
+end
