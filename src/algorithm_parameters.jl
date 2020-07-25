@@ -60,12 +60,33 @@ end
 """
 `TMParams` holds the algorithm parameters for a Temporal Memory with nomenclature
 similar to [source]()
+
+## Dimensions
+- `Nc`: number of columns
+- `k`: cells per column
+- `Nₙ`: ``= k \\mathit{Nc}`` neurons in layer. The `Nₛ` number of dendritic segments
+  is variable
+
+## Tuning
+- `p⁺_01`,`p⁻_01 ∈ [0,1]`: synapse permanence adaptation rate (see [`ProximalSynapses`](@ref))
+- `LTD_p⁻_01 ∈ [0,1]`: synapse long term depression rate
+- `θ_permanence ∈ 𝕊𝕢`: synapse permanence connection threshold
+- `init_permanence ∈ 𝕊𝕢`: permanence of a newly-grown synapse
+- `synapseSampleSize ∈ ℕ`: target number of matching synapses per dendrite.
+  Represents how many bits the dendrite targets to recognize the input.
+  Dendrites with fewer synapses matching the input might grow new synapses.
+- `θ_stimulus_activate ∈ ℕ`: number of matching synapses needed to depolarize the dendrite
+- `θ_stimulus_learn ∈ ℕ`: number of matching synapses that are insufficient to depolarize the
+  dendrite, but sufficient to trigger learning. `θ_stimulus_learn <= θ_stimulus_activate`
+
+## Feature gates
+- `enable_learning`
 """
 @with_kw struct TMParams
   # dimensions
   Nc::Int                  = 4096;    @assert Nc>0
-  cellϵcol::Int            = 16;      @assert cellϵcol>0
-  Nₙ::Int                  = Nc*cellϵcol;    @assert Nₙ>0
+  k::Int                   = 16;      @assert k>0
+  Nₙ::Int                  = k*Nc;    @assert Nₙ>0
 
   # tuning
   p⁺_01::Float32           = .12;     @assert 0<=p⁺_01<=1
@@ -74,13 +95,29 @@ similar to [source]()
   p⁺::𝕊𝕢                 = round(𝕊𝕢,p⁺_01*typemax(𝕊𝕢))
   p⁻::𝕊𝕢                 = round(𝕊𝕢,p⁻_01*typemax(𝕊𝕢))
   LTD_p⁻::𝕊𝕢             = round(𝕊𝕢,LTD_p⁻_01*typemax(𝕊𝕢))
-  θ_permanence_dist::𝕊𝕢  = round(𝕊𝕢,.5typemax(𝕊𝕢))
+  θ_permanence::𝕊𝕢       = round(𝕊𝕢,.5typemax(𝕊𝕢))
   init_permanence::𝕊𝕢    = round(𝕊𝕢,.4typemax(𝕊𝕢))
   synapseSampleSize::Int   = 25;      @assert synapseSampleSize>0
   θ_stimulus_activate::Int = 14;      @assert θ_stimulus_activate>0
-  θ_stimulus_learn::Int    = 12;      @assert θ_stimulus_learn>0
+  θ_stimulus_learn::Int    = 12;      @assert 0 < θ_stimulus_learn <= θ_stimulus_activate
 
   # feature gates
   enable_learning::Bool    = true
-  @assert θ_stimulus_learn <= θ_stimulus_activate
+end
+
+# Created from TMParams
+@with_kw struct DistalSynapseParams
+  p⁺::𝕊𝕢                 = round(𝕊𝕢,p⁺_01*typemax(𝕊𝕢))
+  p⁻::𝕊𝕢                 = round(𝕊𝕢,p⁻_01*typemax(𝕊𝕢))
+  LTD_p⁻::𝕊𝕢             = round(𝕊𝕢,LTD_p⁻_01*typemax(𝕊𝕢))
+  θ_permanence::𝕊𝕢       = round(𝕊𝕢,.5typemax(𝕊𝕢))
+  init_permanence::𝕊𝕢    = round(𝕊𝕢,.4typemax(𝕊𝕢))
+  synapseSampleSize::Int   = 25;      @assert synapseSampleSize>0
+  θ_stimulus_learn::Int    = 12;      @assert 0 < θ_stimulus_learn
+end
+DistalSynapseParams(tmParams::TMParams)= begin
+  @unpack p⁺, p⁻, LTD_p⁻, θ_permanence,
+      init_permanence, synapseSampleSize, θ_stimulus_learn = tmParams
+  DistalSynapseParams(p⁺, p⁻, LTD_p⁻, θ_permanence,
+      init_permanence, synapseSampleSize, θ_stimulus_learn)
 end

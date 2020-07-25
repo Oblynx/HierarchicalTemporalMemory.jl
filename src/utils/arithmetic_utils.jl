@@ -26,6 +26,7 @@ import Base: *
 #  Work around the narrow result types for SparseMatrixCSC{Bool} x Bool
 
 # FIX SparseMatrixCSC{Bool} x Vector{Bool}
+# TODO still needed?
 matmul_elt_op(a,b)= a*b+a*b
 *(A::SparseMatrixCSC{TA,S}, x::StridedVector{Tx}) where {TA<:Bool,S,Tx} =
     (T = Base.promote_op(matmul_elt_op, TA,Tx); SparseArrays.mul!(similar(x, T, A.m), A, x, one(T), zero(T)))

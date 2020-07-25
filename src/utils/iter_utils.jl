@@ -1,6 +1,7 @@
 """
-Iterator transformations, like filters, don't keep the length info.
-`LengthfulIter` is a wrapper that allows length info known programmatically to be used.
+`LengthfulIter` is an iterator wrapper that allows length info known programmatically to be used.
+It's used because iterator transformations, like filters, don't keep the length info,
+which might however be known to the programmer.
 """
 struct LengthfulIter{T,IterT}
   iter::IterT
@@ -23,7 +24,7 @@ end
 _collect(itr,n,elT)= Base.collect(itr)
 
 """
-Iterate over the trues of a BitArray
+`TruesOf` iterates over the trues of a `BitArray`
 
 # Examples
 ```jldoctest; setup= :(import Random; Random.seed!(5))
@@ -51,15 +52,24 @@ end
 Base.collect(B::Truesof)= collect(B.b)
 
 """
-    sparse_foreach(f, s::SparseMatrixCSC,columnIdx)
+`sparse_foreach(f, s::SparseMatrixCSC,columnIdx)` iterates over the columns of the sparse matrix `s` specified by
+`columnIdx` and applies `f(columnElt,columnRowIdx)` to each.
+Column elements are a @view into the nonzero elements at the given column of `s`.
 
-Iterate SparseMatrix `s` and apply `f` columnwise (`f(s,nzrange,rowvals)`)
+See also: [`sparse_map`](@ref)
 """
 sparse_foreach(f, s::SparseMatrixCSC,columnIdx)=
   foreach(Truesof(columnIdx)) do c
     ci= nzrange(s,c)
     f((@view nonzeros(s)[ci]),rowvals(s)[ci])
   end
+"""
+`sparse_map(f, s::SparseMatrixCSC,columnIdx)` maps each column of the sparse matrix `s` specified by
+`columnIdx` to `f(columnElt,columnRowIdx)`.
+Column elements are a @view into the nonzero elements at the given column of `s`.
+
+See also: [`sparse_foreach`](@ref)
+"""
 sparse_map(f, s::SparseMatrixCSC,columnIdx)=
   map(Truesof(columnIdx)) do c
     ci= nzrange(s,c)
@@ -67,25 +77,26 @@ sparse_map(f, s::SparseMatrixCSC,columnIdx)=
   end
 
 """
-@percolumn(f,a,b,k,Ncol)
+`@percolumn(f,a,b,k)`
 
-Macro to apply `f` elementwise and concatenate the results.
-- `a`: vector of size [`Ncol`*`k`], column-major
-- `b`: vectors of size `Ncol`
+Macro to fold a large vector `a` per columns `k` and apply binary operator `f` elementwise
+- `a`: vector of size `Nc*k`, column-major (important because it will fold every `k` elements)
+- `b`: vector of size `Nc`
 """
 macro percolumn(f,a,b,k)
   esc(:( $f.(reshape($a,$k,:), $b') ))
 end
 """
-@percolumn(reduce,a,k,Ncol)
+`@percolumn(reduce,a,k)`
 
-Macro to `reduce` `a` per column.
+Macro to `reduce(a)` per column `k`.
 """
 macro percolumn(reduce,a,k)
   esc(:( $reduce(reshape($a,$k,:),dims=1)|> vec ))
 end
+
 """
-    bitarray(dims, idx)
+`bitarray(dims, idx)`
 
 Create a bitarray with `true` only at `idx`.
 """

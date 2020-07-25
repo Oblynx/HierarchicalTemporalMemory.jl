@@ -24,9 +24,9 @@ plot_mase(data,pred,pred_timesteps)= begin
             plot(crit_t2, [data[crit_t2] pred[crit_t2]], legend= :none),
             layout= (1,2)),
        layout= (3,1))|> display
-  @printf("Min 10-day MASE: %.2f\n",minimum(errormetric))
+  @info @sprintf("Min 10-day MASE: %.2f\n",minimum(errormetric))
 end
-display_evaluation(t,sp,sp_activity,spDims)= println("t=$t")
+display_evaluation(t,sp,sp_activity,spDims)= @info("t=$t")
 process_data!(tN,data,encParams,sp,tm,decoder)=
   for t in 1:tN
     z,a,power_bucket= _process_sp(t,tN,data,encParams,sp,display_evaluation)
@@ -43,7 +43,7 @@ process_data!(tN,data,encParams,sp,tm,decoder)=
 prediction_timesteps=1
 inputDims= ((15,6,3).*25,)
 spDims= (1600,)
-cellϵcol= 8
+k= 8
 @info "creating Spatial Pooler"
 sp= SpatialPooler(SPParams(
       szᵢₙ= map(sum,inputDims), szₛₚ=spDims,
@@ -60,7 +60,7 @@ sp= SpatialPooler(SPParams(
 @info "creating Temporal Memory"
 tm= TemporalMemory(TMParams(
       Nc=prod(spDims),
-      cellϵcol=cellϵcol,
+      k=k,
       θ_stimulus_activate=14,
       θ_stimulus_learn=12,
       synapseSampleSize=35,
@@ -69,7 +69,7 @@ tm= TemporalMemory(TMParams(
       LTD_p⁻_01= 0.012
      ))
 
-Ncol= prod(spDims); Ncell= Ncol*cellϵcol
+Ncol= prod(spDims); Ncell= Ncol*k
 # Define input data
 data,tN= read_gympower("test_data/gym_power_benchmark-extended.csv")
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
