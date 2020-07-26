@@ -12,8 +12,9 @@ display_evaluation(t,sp,sp_activity,spDims)= begin
   @info("t=$t")
   sparsity= count(sp_activity)/prod(spDims)*100
 
+
   # Evaluation metrics
-  #@info "Sparsity: " sparsity
+  #@info "Sparsity: $(sparsity)"
   #histogram(sp.b.b)|> display
   #histogram(sp.synapses.Dₚ[sp.synapses.Dₚ.>0]|>Vector, yaxis=(:log10))|> display
   #heatmap(@> sp_activity reshape(64,32))|> display
@@ -49,7 +50,7 @@ sp= SpatialPooler(SPParams(
       θ_stimulus_activate=4,
       p⁺_01= 0.07,
       p⁻_01= 0.12,
-      β=3,
+      β=5,
       Tboost=400,
       enable_local_inhibit=false,
       enable_boosting=true))
