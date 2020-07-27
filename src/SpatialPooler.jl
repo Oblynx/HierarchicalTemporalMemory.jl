@@ -90,7 +90,7 @@ struct SpatialPooler{Nin,Nsp} #<: Region
     )
   end
 end
-b(sp::SpatialPooler)= sp.b
+b(sp::SpatialPooler)= sp.params.enable_boosting ? ones(length(sp.b)) : sp.b
 åₙ(sp::SpatialPooler)= sp.åₙ
 Wₚ(sp::SpatialPooler)= Wₚ(sp.synapses)
 
