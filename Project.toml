@@ -1,7 +1,7 @@
 name = "HierarchicalTemporalMemory"
 uuid = "db654dba-670c-566a-9226-64313b881ded"
 authors = ["Konstantinos Samaras-Tsakiris <ksamtsak@gmail.com>"]
-version = "0.2.0"
+version = "0.1.0"
 
 [deps]
 ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
