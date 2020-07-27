@@ -139,7 +139,7 @@ function sp_activate(sp::SpatialPooler{Nin,Nsp}, z) where {Nin,Nsp}
   @unpack szₛₚ,s,θ_permanence,θ_stimulus_activate,enable_local_inhibit = sp.params
   @unpack φ = sp.φ;
   # overlap
-  o(z)= @> (b(sp) .* (Wₚ(sp)'z)) reshape(szₛₚ)
+  o(z)= @> (b(sp) .* (Wₚ(sp)'*(z|>vec))) reshape(szₛₚ)
 
   # inhibition
   area()= enable_local_inhibit ? α(φ)^Nsp : prod(szₛₚ)
