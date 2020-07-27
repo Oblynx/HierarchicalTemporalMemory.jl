@@ -5,7 +5,7 @@
 [![Coverage](https://codecov.io/gh/oblynx/HierarchicalTemporalMemory.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/oblynx/HierarchicalTemporalMemory.jl)
 
 
-Julia implementation of core [Numenta HTM](https://numenta.com/) algorithms
+Julia implementation of core [Numenta HTM](https://numenta.com/) algorithms. Read the [docs](https://oblynx.github.io/HierarchicalTemporalMemory.jl/dev).
 
 ---
 
