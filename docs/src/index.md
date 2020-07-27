@@ -42,3 +42,7 @@ HTM theory is not yet complete, lacking a definitive way to stabilize sequence r
 - Sensorimotor inference and temporal pooling ideas, influenced by forum discussions such as [this](https://discourse.numenta.org/t/exploring-the-repeating-inputs-problem/5498/14). This goes in the direction of the biggest current problems:
   - temporal noise
   - hierarchical model composition
+
+## Acknowledgements
+
+- Maria Litsa: logo
