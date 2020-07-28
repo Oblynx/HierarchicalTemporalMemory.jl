@@ -66,7 +66,7 @@ struct SpatialPooler{Nin,Nsp} #<: Region
   params::SPParams{Nin,Nsp}
   # includes the permanence matrix Dₚ
   synapses::ProximalSynapses
-  φ::InhibitionRadius
+  φ::Vector{Float32}  # vector instead of Float32 for mutating
   # Boosting
   "boosting factors"
   b::Vector{Float32}
@@ -82,16 +82,18 @@ function SpatialPooler(params::SPParams{Nin,Nsp}) where {Nin,Nsp}
 
   synapseSparsity= prob_synapse * (enable_local_inhibit ?
                       (α(γ)^Nin)/prod(szᵢₙ) : 1)
+  init_φ= [((2γ+0.5)*prob_synapse*mean(szₛₚ./szᵢₙ) - 1)/2]
   SpatialPooler{Nin,Nsp}(params,
       ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
           prob_synapse,θ_permanence),
-      InhibitionRadius(γ,prob_synapse,szᵢₙ,szₛₚ, enable_local_inhibit),
+      init_φ,
       ones(prod(szₛₚ)), zeros(szₛₚ), zeros(szₛₚ)
   )
 end
 b(sp::SpatialPooler)= sp.params.enable_boosting ? ones(length(sp.b)) : sp.b
 åₙ(sp::SpatialPooler)= sp.åₙ
 Wₚ(sp::SpatialPooler)= Wₚ(sp.synapses)
+φ(sp::SpatialPooler)= sp.φ[1]
 
 # SP activation
 
@@ -136,12 +138,11 @@ For details see: [`sp_activate`](@ref)
 """
 function sp_activate(sp::SpatialPooler{Nin,Nsp}, z) where {Nin,Nsp}
   @unpack szₛₚ,s,θ_permanence,θ_stimulus_activate,enable_local_inhibit = sp.params
-  @unpack φ = sp.φ;
   # overlap
   o(z)= @> (b(sp) .* (Wₚ(sp)'*(z|>vec))) reshape(szₛₚ)
 
   # inhibition
-  area()= enable_local_inhibit ? α(φ)^Nsp : prod(szₛₚ)
+  area()= enable_local_inhibit ? α(φ(sp))^Nsp : prod(szₛₚ)
   k()=    ceil(Int, s*area())
   # inhibition threshold per area
   # OPTIMIZE: local inhibition is the SP's bottleneck. "mapwindow" is suboptimal;
@@ -150,7 +151,7 @@ function sp_activate(sp::SpatialPooler{Nin,Nsp}, z) where {Nin,Nsp}
   # Z: k-th larger overlap in neighborhood
   t= (area()-1)/area()
   Z(y)= _Z(Val(enable_local_inhibit),y)
-  _Z(loc_inhibit::Val{true}, y)= mapwindow(θ_inhibit!, y, neighborhood(φ,Nsp), border=Fill(0)) .+ t
+  _Z(loc_inhibit::Val{true}, y)= mapwindow(θ_inhibit!, y, neighborhood(φ(sp),Nsp), border=Fill(0)) .+ t
   _Z(loc_inhibit::Val{false},y)= θ_inhibit!(copy(y)) + 0.5
 
   activate(o)= (o .+ rand(Float32,size(o)) .> Z(o)) .& (o .> θ_stimulus_activate)
@@ -159,7 +160,25 @@ end
 
 # SP adaptation
 
-# boosting
+"""
+`step!(sp::SpatialPooler, z::CellActivity)` evolves the Spatial Pooler to the next timestep
+by evolving each of its constituents (synapses, boosting, inhibition radius)
+and returns the output activation.
+
+See also: [`sp_activate`](@ref)
+"""
+function step!(sp::SpatialPooler, z)
+  a= sp_activate(sp, z)
+  if sp.params.enable_learning
+    step!(sp.synapses, z,a, sp.params)
+    step_boost!(sp,a)
+    # φ kept static for the moment (no obvious benefit from dynamic φ)
+    #nupic_update_φ!(sp)
+  end
+  return a
+end
+
+# # boosting
 """
 `step_boost!(sp::SpatialPooler,a)` evolves the boosting factors `b` (see [`sp_activate`](@ref)).
 They depend on:
@@ -177,25 +196,33 @@ boostfun(åₜ,åₙ,β)= @> exp.(-β .* (åₜ .- åₙ)) vec
 step_åₙ!(sp::SpatialPooler)= begin
   # local mean filter
   _step_åₙ!(sp::SpatialPooler{Nin,Nsp},local_inhibit::Val{true}) where{Nin,Nsp}=
-      imfilter!(sp.åₙ,sp.åₜ, mean_kernel(sp.φ.φ,Nsp), "symmetric")
+      imfilter!(sp.åₙ,sp.åₜ, mean_kernel(φ(sp),Nsp), "symmetric")
   _step_åₙ!(sp::SpatialPooler,local_inhibit::Val{false})= (sp.åₙ.= mean(sp.åₜ))
 
   _step_åₙ!(sp,Val(sp.params.enable_local_inhibit))
 end
 
-"""
-`step!(sp::SpatialPooler, z::CellActivity)` evolves the Spatial Pooler to the next timestep
-by evolving each of its constituents (synapses, boosting, inhibition radius)
-and returns the output activation.
+# # Inhibition radius
 
-See also: [`sp_activate`](@ref)
-"""
-function step!(sp::SpatialPooler, z)
-  a= sp_activate(sp, z)
-  if sp.params.enable_learning
-    step!(sp.synapses, z,a, sp.params)
-    step_boost!(sp,a)
-    step!(sp.φ, sp.params)
-  end
-  return a
+# This implementation follows the SP paper description and NUPIC, but seems too complex
+#   for no reason. Replace with a static inhibition radius instead
+nupic_update_φ!(sp::SpatialPooler)= begin
+  @unpack szₛₚ, szᵢₙ, prob_synapse = sp.params
+  # sample 10% of minicolumns
+  mean_receptiveFieldSpan()= (i-> receptivefieldSpan(szᵢₙ,Wₚ(sp)[:,i]) ).( randperm(size(Wₚ(sp),2))[1:100] ) |> mean
+  #mean_receptiveFieldSpan()= mapslices(receptivefieldSpan, W, dims=1)|> mean
+  # Simplified version:
+  #mean_receptiveFieldSpan()= (2γ+0.5) * prob_synapse
+  receptiveFieldSpan_yspace()= ( mean_receptiveFieldSpan()*mean(szₛₚ./szᵢₙ) - 1)/2
+  sp.φ[1]= max(receptiveFieldSpan_yspace(), 1)
+end
+
+# Foreach minicolumn, find the geometric span of its projection to the input space through the connected synapses
+# foreach dimension, then return the mean
+function receptivefieldSpan(sz_in, Wᵢ)
+  c= CartesianIndices(sz_in)
+  connectedInputsXY= c[findall(Wᵢ)]
+  maxc= [mapreduce(c->c.I[d], max, connectedInputXY) for d in 1:length(sz_in)]
+  minc= [mapreduce(c->c.I[d], min, connectedInputXY) for d in 1:length(sz_in)]
+  mean(maxc .- minc .+ 1)
 end
