@@ -76,6 +76,7 @@ struct SpatialPooler
   åₙ::Array{Float32}
 end
 function SpatialPooler(params::SPParams)
+  params= normalize_SPparams(params)
   @unpack szᵢₙ,szₛₚ,prob_synapse,θ_permanence,γ,
           enable_local_inhibit  = params
 
@@ -224,4 +225,10 @@ function receptivefieldSpan(sz_in, Wᵢ)
   maxc= [mapreduce(c->c.I[d], max, connectedInputXY) for d in 1:length(sz_in)]
   minc= [mapreduce(c->c.I[d], min, connectedInputXY) for d in 1:length(sz_in)]
   mean(maxc .- minc .+ 1)
+end
+
+normalize_SPparams(params)= begin
+  params.szᵢₙ|> typeof <: Int ? (params = @set params.szᵢₙ = (params.szᵢₙ,)) : nothing
+  params.szₛₚ|> typeof <: Int ? (params = @set params.szₛₚ = (params.szₛₚ,)) : nothing
+  params
 end
