@@ -149,11 +149,12 @@ function sp_activate(sp::SpatialPooler{Nin,Nsp}, z) where {Nin,Nsp}
   #   https://github.com/JuliaImages/Images.jl/issues/751
   θ_inhibit!(X)= @> X vec partialsort!(k(),rev=true)
   # Z: k-th larger overlap in neighborhood
+  t= (area()-1)/area()
   Z(y)= _Z(Val(enable_local_inhibit),y)
-  _Z(loc_inhibit::Val{true}, y)= mapwindow(θ_inhibit!, y, neighborhood(φ,Nsp), border=Fill(0))
-  _Z(loc_inhibit::Val{false},y)= θ_inhibit!(copy(y))
+  _Z(loc_inhibit::Val{true}, y)= mapwindow(θ_inhibit!, y, neighborhood(φ,Nsp), border=Fill(0)) .+ t
+  _Z(loc_inhibit::Val{false},y)= θ_inhibit!(copy(y)) + 0.5
 
-  activate(o)= (o .>= Z(o)) .& (o .> θ_stimulus_activate)
+  activate(o)= (o .+ rand(Float32,size(o)) .> Z(o)) .& (o .> θ_stimulus_activate)
   z|> o|> activate
 end
 
