@@ -6,8 +6,8 @@
 
 # Side of hypercube with range φ
 α(φ)= 2*round(Int,φ)+1
-neighborhood(φ,Nsp)= ntuple(i->α(φ),Nsp)
-mean_kernel(φ,Nsp)= ones(neighborhood(φ,Nsp)) ./ α(φ).^Nsp
+neighborhood(φ,Ndim)= ntuple(i->α(φ),Ndim)
+mean_kernel(φ,Ndim)= ones(neighborhood(φ,Ndim)) ./ α(φ).^Ndim
 
 # BitVector x SparseMatrixCSC{Bool}, used in overlap
 import Base: *

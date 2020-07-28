@@ -1,5 +1,5 @@
 """
-`SPParams{Nin,Nsp}` holds the algorithm parameters for a spatial pooler with nomenclature
+`SPParams` holds the algorithm parameters for a spatial pooler with nomenclature
 similar to [source](https://www.frontiersin.org/articles/10.3389/fncom.2017.00111/full)
 
 The dimension parameters are problem-specific and should be the first to be specified.
@@ -30,10 +30,10 @@ All gated features are enabled by default.
 - `enable_learning = true`
 - `enable_boosting = true`
 """
-@with_kw struct SPParams{Nin,Nsp}
+@with_kw struct SPParams
   # dimensions
-  szᵢₙ::Union{NTuple{Nin,Int},Int}     = (32,32); @assert all(szᵢₙ.>0)
-  szₛₚ::Union{NTuple{Nsp,Int},Int}     = (50,50); @assert all(szₛₚ.>0)
+  szᵢₙ::Union{NTuple{N,Int} where N,Int}     = (32,32); @assert all(szᵢₙ.>0)
+  szₛₚ::Union{NTuple{N,Int} where N,Int}     = (50,50); @assert all(szₛₚ.>0)
   γ::Int                    = 6;       @assert 0<γ<=minimum(szᵢₙ)
 
   # tuning

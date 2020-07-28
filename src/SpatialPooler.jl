@@ -4,7 +4,7 @@
 
 
 """
-`SpatialPooler{Nin,Nsp}` is a learning algorithm that decorrelates the features of an input space,
+`SpatialPooler` is a learning algorithm that decorrelates the features of an input space,
 producing a Sparse Distributed Representation (SDR) of the input space.
 If defines the proximal connections of an HTM layer.
 
@@ -62,8 +62,8 @@ See also: [`sp_activate`](@ref)
 ---
 See also: [`ProximalSynapses`](@ref), [`TemporalMemory`](@ref)
 """
-struct SpatialPooler{Nin,Nsp} #<: Region
-  params::SPParams{Nin,Nsp}
+struct SpatialPooler
+  params::SPParams
   # includes the permanence matrix Dₚ
   synapses::ProximalSynapses
   φ::Vector{Float32}  # vector instead of Float32 for mutating
@@ -75,15 +75,14 @@ struct SpatialPooler{Nin,Nsp} #<: Region
   "[boosting] average in neighborhood activation of each minicolumn"
   åₙ::Array{Float32}
 end
-# Nin, Nsp: number of input and spatial pooler dimensions
-function SpatialPooler(params::SPParams{Nin,Nsp}) where {Nin,Nsp}
+function SpatialPooler(params::SPParams)
   @unpack szᵢₙ,szₛₚ,prob_synapse,θ_permanence,γ,
           enable_local_inhibit  = params
 
   synapseSparsity= prob_synapse * (enable_local_inhibit ?
-                      (α(γ)^Nin)/prod(szᵢₙ) : 1)
+                      (α(γ)^length(szᵢₙ))/prod(szᵢₙ) : 1)
   init_φ= [((2γ+0.5)*prob_synapse*mean(szₛₚ./szᵢₙ) - 1)/2]
-  SpatialPooler{Nin,Nsp}(params,
+  SpatialPooler(params,
       ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
           prob_synapse,θ_permanence),
       init_φ,
@@ -116,7 +115,7 @@ For details see: [`sp_activate`](@ref)
 (sp::SpatialPooler)(z)= sp_activate(sp,z)
 
 """
-`sp_activate(sp::SpatialPooler{Nin,Nsp}, z)` calculates the SP's output activation for given input activation `z`.
+`sp_activate(sp::SpatialPooler, z)` calculates the SP's output activation for given input activation `z`.
 
 # Algorithm
 
@@ -136,13 +135,13 @@ For details see: [`sp_activate`](@ref)
     it diverges, because of the limited & integral number of neurons winning in each neighborhood.
     This could be addressed by *tie breaking*, but it doesn't seem to have much practical importance.
 """
-function sp_activate(sp::SpatialPooler{Nin,Nsp}, z) where {Nin,Nsp}
+function sp_activate(sp::SpatialPooler, z)
   @unpack szₛₚ,s,θ_permanence,θ_stimulus_activate,enable_local_inhibit = sp.params
   # overlap
   o(z)= @> (b(sp) .* (Wₚ(sp)'*(z|>vec))) reshape(szₛₚ)
 
   # inhibition
-  area()= enable_local_inhibit ? α(φ(sp))^Nsp : prod(szₛₚ)
+  area()= enable_local_inhibit ? α(φ(sp))^length(szₛₚ) : prod(szₛₚ)
   k()=    ceil(Int, s*area())
   # inhibition threshold per area
   # OPTIMIZE: local inhibition is the SP's bottleneck. "mapwindow" is suboptimal;
@@ -151,7 +150,7 @@ function sp_activate(sp::SpatialPooler{Nin,Nsp}, z) where {Nin,Nsp}
   # Z: k-th larger overlap in neighborhood
   t= (area()-1)/area()
   Z(y)= _Z(Val(enable_local_inhibit),y)
-  _Z(loc_inhibit::Val{true}, y)= mapwindow(θ_inhibit!, y, neighborhood(φ(sp),Nsp), border=Fill(0)) .+ t
+  _Z(loc_inhibit::Val{true}, y)= mapwindow(θ_inhibit!, y, neighborhood(φ(sp),length(szₛₚ)), border=Fill(0)) .+ t
   _Z(loc_inhibit::Val{false},y)= θ_inhibit!(copy(y)) + 0.5
 
   activate(o)= (o .+ rand(Float32,size(o)) .> Z(o)) .& (o .> θ_stimulus_activate)
@@ -195,8 +194,8 @@ end
 boostfun(åₜ,åₙ,β)= @> exp.(-β .* (åₜ .- åₙ)) vec
 step_åₙ!(sp::SpatialPooler)= begin
   # local mean filter
-  _step_åₙ!(sp::SpatialPooler{Nin,Nsp},local_inhibit::Val{true}) where{Nin,Nsp}=
-      imfilter!(sp.åₙ,sp.åₜ, mean_kernel(φ(sp),Nsp), "symmetric")
+  _step_åₙ!(sp::SpatialPooler,local_inhibit::Val{true})=
+      imfilter!(sp.åₙ,sp.åₜ, mean_kernel(φ(sp),length(sp.params.szₛₚ)), "symmetric")
   _step_åₙ!(sp::SpatialPooler,local_inhibit::Val{false})= (sp.åₙ.= mean(sp.åₜ))
 
   _step_åₙ!(sp,Val(sp.params.enable_local_inhibit))
