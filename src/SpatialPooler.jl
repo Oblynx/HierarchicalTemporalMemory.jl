@@ -144,17 +144,25 @@ function sp_activate(sp::SpatialPooler, z)
   # inhibition
   area()= enable_local_inhibit ? α(φ(sp))^length(szₛₚ) : prod(szₛₚ)
   k()=    ceil(Int, s*area())
+  sErr()= 1 - k() + s*area()
+  tieEst(o,Z)= count(o .== Z) * area()/prod(szₛₚ)
   # inhibition threshold per area
   # OPTIMIZE: local inhibition is the SP's bottleneck. "mapwindow" is suboptimal;
   #   https://github.com/JuliaImages/Images.jl/issues/751
   θ_inhibit!(X)= @> X vec partialsort!(k(),rev=true)
   # Z: k-th larger overlap in neighborhood
-  t= (area()-1)/area()
   Z(y)= _Z(Val(enable_local_inhibit),y)
-  _Z(loc_inhibit::Val{true}, y)= mapwindow(θ_inhibit!, y, neighborhood(φ(sp),length(szₛₚ)), border=Fill(0)) .+ t
-  _Z(loc_inhibit::Val{false},y)= θ_inhibit!(copy(y)) + 0.5
+  # we increase the threshold a bit to account stochastically for the error in approximating k and for tiebreaking
+  _Z(loc_inhibit::Val{true}, y)= @> mapwindow(θ_inhibit!, y, neighborhood(φ(sp),length(szₛₚ)), border=Fill(0)) max.(θ_stimulus_activate)
+  _Z(loc_inhibit::Val{false},y)= @> θ_inhibit!(copy(y)) max.(θ_stimulus_activate)
+  tiebreaker(o,Z)= rand(Float32,szₛₚ) .- (1 - sErr()/tieEst(o,Z))
 
-  activate(o)= (o .+ rand(Float32,size(o)) .> Z(o)) .& (o .> θ_stimulus_activate)
+  #@info "metrics" k() sErr() tieEst() 1-sErr()/tieEst()
+  #error("f")
+  activate(o)= begin
+    Z= Z(o)
+    (o .+ tiebreaker(o,Z) .> Z)
+  end
   z|> o|> activate
 end
 
@@ -221,7 +229,7 @@ end
 # foreach dimension, then return the mean
 function receptivefieldSpan(sz_in, Wᵢ)
   c= CartesianIndices(sz_in)
-  connectedInputsXY= c[findall(Wᵢ)]
+  connectedInputXY= c[findall(Wᵢ)]
   maxc= [mapreduce(c->c.I[d], max, connectedInputXY) for d in 1:length(sz_in)]
   minc= [mapreduce(c->c.I[d], min, connectedInputXY) for d in 1:length(sz_in)]
   mean(maxc .- minc .+ 1)
