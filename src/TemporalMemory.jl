@@ -69,23 +69,22 @@ struct TemporalMemory
   params::TMParams
   distalSynapses::DistalSynapses
   previous::TMState
-
-  function TemporalMemory(params::TMParams)
-    @unpack Nₙ, Nc, k = params
-    Nseg_init= 0
-    new(params,
-        DistalSynapses(
-          SparseSynapses(spzeros(𝕊𝕢,Nₙ,Nseg_init)),
-          spzeros(Bool,Nₙ,Nseg_init),
-          spzeros(Bool,Nₙ,Nseg_init),
-          spzeros(Bool,Nseg_init,Nc),
-          k, DistalSynapseParams(params)),
-        TMState((
-          α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
-          Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init),
-          ovp_Mₛ=zeros(Nseg_init)
-        )))
-  end
+end
+function TemporalMemory(params::TMParams)
+  @unpack Nₙ, Nc, k = params
+  Nseg_init= 0
+  TemporalMemory(params,
+      DistalSynapses(
+        SparseSynapses(spzeros(𝕊𝕢,Nₙ,Nseg_init)),
+        spzeros(Bool,Nₙ,Nseg_init),
+        spzeros(Bool,Nₙ,Nseg_init),
+        spzeros(Bool,Nseg_init,Nc),
+        k, DistalSynapseParams(params)),
+      TMState((
+        α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
+        Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init),
+        ovp_Mₛ=zeros(Nseg_init)
+      )))
 end
 
 # Given a column activation pattern `c` (SP output), step the TM

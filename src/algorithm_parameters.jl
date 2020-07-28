@@ -12,7 +12,7 @@ All gated features are enabled by default.
 ## Dimensions
 - `szᵢₙ = (32,32)`: input dimensions
 - `szₛₚ = (32,32)`: output dimensions
-- `γ = 6`: receptive field radius (how large an input area an output minicolumn maps to)
+- `γ = 6`: receptive field radius (how large an input area an output minicolumn maps to). Must be <= min(szᵢₙ)
 
 ## Algorithm tuning
 - `s = .02`: average output sparsity
@@ -32,9 +32,9 @@ All gated features are enabled by default.
 """
 @with_kw struct SPParams{Nin,Nsp}
   # dimensions
-  szᵢₙ::NTuple{Nin,Int}     = (32,32); @assert all(szᵢₙ.>0)
-  szₛₚ::NTuple{Nsp,Int}     = (50,50); @assert all(szₛₚ.>0)
-  γ::Int                    = 6;       @assert γ>0
+  szᵢₙ::Union{NTuple{Nin,Int},Int}     = (32,32); @assert all(szᵢₙ.>0)
+  szₛₚ::Union{NTuple{Nsp,Int},Int}     = (50,50); @assert all(szₛₚ.>0)
+  γ::Int                    = 6;       @assert 0<γ<=minimum(szᵢₙ)
 
   # tuning
   s::Float32                = .02;     @assert s>0
