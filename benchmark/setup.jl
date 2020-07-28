@@ -17,7 +17,7 @@ function setupHTMexperiment(;
       k= 8,
       spParams= SPParams(
             szᵢₙ= (inputDims.|> sum), szₛₚ=spDims,
-            γ=250,
+            γ=600,
             s=0.03,
             prob_synapse=0.85,
             θ_stimulus_activate=5,

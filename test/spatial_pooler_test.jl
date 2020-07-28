@@ -44,7 +44,7 @@ spDims= (2048,)
 @info "creating Spatial Pooler"
 sp= SpatialPooler(SPParams(
       szᵢₙ= (inputDims.|> sum), szₛₚ=spDims,
-      γ=1000,
+      γ=600,
       s=0.02,
       prob_synapse=0.15,
       θ_stimulus_activate=4,
