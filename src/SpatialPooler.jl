@@ -74,21 +74,20 @@ struct SpatialPooler{Nin,Nsp} #<: Region
   åₜ::Array{Float32}
   "[boosting] average in neighborhood activation of each minicolumn"
   åₙ::Array{Float32}
+end
+# Nin, Nsp: number of input and spatial pooler dimensions
+function SpatialPooler(params::SPParams{Nin,Nsp}) where {Nin,Nsp}
+  @unpack szᵢₙ,szₛₚ,prob_synapse,θ_permanence,γ,
+          enable_local_inhibit  = params
 
-  # Nin, Nsp: number of input and spatial pooler dimensions
-  function SpatialPooler(params::SPParams{Nin,Nsp}) where {Nin,Nsp}
-    @unpack szᵢₙ,szₛₚ,prob_synapse,θ_permanence,γ,
-            enable_local_inhibit  = params
-
-    synapseSparsity= prob_synapse * (enable_local_inhibit ?
-                        (α(γ)^Nin)/prod(szᵢₙ) : 1)
-    new{Nin,Nsp}(params,
-        ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
-            prob_synapse,θ_permanence),
-        InhibitionRadius(γ,prob_synapse,szᵢₙ,szₛₚ, enable_local_inhibit),
-        ones(prod(szₛₚ)), zeros(szₛₚ), zeros(szₛₚ)
-    )
-  end
+  synapseSparsity= prob_synapse * (enable_local_inhibit ?
+                      (α(γ)^Nin)/prod(szᵢₙ) : 1)
+  SpatialPooler{Nin,Nsp}(params,
+      ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
+          prob_synapse,θ_permanence),
+      InhibitionRadius(γ,prob_synapse,szᵢₙ,szₛₚ, enable_local_inhibit),
+      ones(prod(szₛₚ)), zeros(szₛₚ), zeros(szₛₚ)
+  )
 end
 b(sp::SpatialPooler)= sp.params.enable_boosting ? ones(length(sp.b)) : sp.b
 åₙ(sp::SpatialPooler)= sp.åₙ
