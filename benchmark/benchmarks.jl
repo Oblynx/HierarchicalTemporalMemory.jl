@@ -1,4 +1,4 @@
-using HierarchicalTemporalMemory, BenchmarkTools, CSV
+using HierarchicalTemporalMemory, BenchmarkTools, CSV, Setfield
 import Random.seed!
 seed!(0)
 
@@ -13,7 +13,8 @@ z,_= encode(data,1)
 
 let grp= SUITE["SP"]
   # Run 1 iteration of SP adaptation repeatedly
-  grp["SP: 1 iteration"]= @benchmarkable step!(sp,z)
+  grp["SP: 1 iteration, global inhibit"]= @benchmarkable step!(sp,z)
+  grp["SP: 1 iteration, local inhibit"]= @benchmarkable step!($(@set sp.params.enable_local_inhibit= true) ,z)
 end
 
 let grp= SUITE["TM"]
