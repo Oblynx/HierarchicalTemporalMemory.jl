@@ -68,12 +68,12 @@ process_data!(encHistory,spHistory,encANDspHistory, tN,data,encParams,sp)
 total_overlap= [1; map(x->length(x.encANDsp), encANDspHistory[2:end]) ./
                    map(x->x.Nenc, encANDspHistory[2:end])]
 #plot(total_overlap)|>display
-early_totalOverlap= mean(total_overlap[170:337])
-late_totalOverlap= mean(total_overlap[338:end])
+early_totalOverlap= mean(total_overlap[50:100])
+late_totalOverlap= mean(total_overlap[500:end])
 @info @sprintf("Mean SP performance: [%.2f,%.2f]\n", early_totalOverlap, late_totalOverlap)
 
 # If this isn't true, something's quite wrong with the model
-@test early_totalOverlap >= 0.75 && late_totalOverlap >= 0.78
+@test early_totalOverlap >= 0.65 && late_totalOverlap >= 0.78 && late_totalOverlap > early_totalOverlap
 
 #sparsity= (i-> count(spHistory[:,i])/prod(spDims)).(1:tN)
 #mean(sparsity.*100)|> display

@@ -111,7 +111,7 @@ and activation `a`. The adaptation has a causal and an anticausal component:
 
 See alse: [`ProximalSynapses`](@ref)
 """
-step!(s::ProximalSynapses, z,a, params)= adapt!(s.Dₚ, s,z,a,params)
+step!(s::ProximalSynapses, z,a, params)= adapt!(s.Dₚ, s, z|> vec, a|> vec, params)
 
 # These are performance optimizations of the simple update methods described in the ProximalSynapses doc
 # - minimize allocations and accesses
