@@ -144,7 +144,7 @@ function sp_activate(sp::SpatialPooler, z)
   # inhibition
   area()= enable_local_inhibit ? α(φ(sp))^length(szₛₚ) : prod(szₛₚ)
   k()=    ceil(Int, s*area())
-  sErr()= 1 - k() + s*area()
+  sErr()= 1 - k() + s*area()  # ∈ (0,1)
   tieEst(o,Z)= count(o .== Z) * area()/prod(szₛₚ)
   # inhibition threshold per area
   # OPTIMIZE: local inhibition is the SP's bottleneck. "mapwindow" is suboptimal;
@@ -155,7 +155,14 @@ function sp_activate(sp::SpatialPooler, z)
   # we increase the threshold a bit to account stochastically for the error in approximating k and for tiebreaking
   _Z(loc_inhibit::Val{true}, y)= @> mapwindow(θ_inhibit!, y, neighborhood(φ(sp),length(szₛₚ)), border=Fill(0)) max.(θ_stimulus_activate)
   _Z(loc_inhibit::Val{false},y)= @> θ_inhibit!(copy(y)) max.(θ_stimulus_activate)
-  tiebreaker(o,Z)= rand(Float32,szₛₚ) .- (1 - sErr()/tieEst(o,Z))
+  tiebreaker(o,Z)= begin
+    t= tieEst(o,Z)
+    t < 1.0 && begin
+      @error "tiEst < 1 !!!" t
+      error("a")
+    end
+    t == 0 ? 0 : rand(Float32,szₛₚ) .- (1 - sErr()/t)
+  end
 
   activate(o)= begin
     Z= Z(o)

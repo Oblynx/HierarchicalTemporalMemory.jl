@@ -37,23 +37,23 @@ process_data!(encHistory,spHistory,encANDspHistory,tN,data,encParams,sp)=
   end
 
 # Define Spatial Pooler
-inputDims= ((14,6,4).*25,)
+inputDims= ((14,6,4).*20,)
 spDims= (2048,)
 #inputDims= (8,8)
 #spDims= (12,12)
 @info "creating Spatial Pooler"
 sp= SpatialPooler(SPParams(
       szᵢₙ= (inputDims.|> sum), szₛₚ=spDims,
-      γ=600,
       s=0.02,
-      prob_synapse=0.15,
-      θ_stimulus_activate=4,
-      p⁺_01= 0.07,
+      prob_synapse=0.45,
+      θ_stimulus_activate=3,
+      p⁺_01= 0.10,
       p⁻_01= 0.12,
       β=5,
       Tboost=400,
       enable_local_inhibit=false,
-      enable_boosting=true))
+      enable_boosting=true,
+      enable_learning=true))
 # Define input data
 data,tN= read_gympower("test_data/gym_power_benchmark.csv")
 encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,

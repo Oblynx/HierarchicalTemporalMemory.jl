@@ -41,19 +41,18 @@ process_data!(tN,data,encParams,sp,tm,decoder)=
   end
 
 prediction_timesteps=1
-inputDims= ((15,6,3).*25,)
+inputDims= ((15,6,3).*24,)
 spDims= (1600,)
 k= 8
 @info "creating Spatial Pooler"
 sp= SpatialPooler(SPParams(
       szᵢₙ= map(sum,inputDims), szₛₚ=spDims,
-      γ=600,
       s=0.03,
       prob_synapse=0.85,
       θ_stimulus_activate=5,
       p⁺_01= 0.20,
       p⁻_01= 0.12,
-      β=3,
+      β=5,
       Tboost=350,
       enable_local_inhibit=false,
       enable_boosting=true))
