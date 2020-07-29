@@ -157,11 +157,9 @@ function sp_activate(sp::SpatialPooler, z)
   _Z(loc_inhibit::Val{false},y)= @> θ_inhibit!(copy(y)) max.(θ_stimulus_activate)
   tiebreaker(o,Z)= rand(Float32,szₛₚ) .- (1 - sErr()/tieEst(o,Z))
 
-  #@info "metrics" k() sErr() tieEst() 1-sErr()/tieEst()
-  #error("f")
   activate(o)= begin
     Z= Z(o)
-    (o .+ tiebreaker(o,Z) .> Z)
+    (o .+ tiebreaker(o,Z) .>= Z)
   end
   z|> o|> activate
 end
@@ -238,5 +236,6 @@ end
 normalize_SPparams(params)= begin
   params.szᵢₙ|> typeof <: Int ? (params = @set params.szᵢₙ = (params.szᵢₙ,)) : nothing
   params.szₛₚ|> typeof <: Int ? (params = @set params.szₛₚ = (params.szₛₚ,)) : nothing
+  !params.enable_local_inhibit ? (params = @set params.γ = maximum(params.szᵢₙ)) : nothing
   params
 end
