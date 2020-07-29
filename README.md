@@ -24,6 +24,9 @@ This package implements Numenta's Hierarchical Temporal Memory in simple and con
 relying on linear algebra and staying close to the
 mathematical description in the source material.
 
+## Experiments
+
+Experiments and evaluation of this package lives in the [HTMexperiments repo](https://github.com/Oblynx/HTMexperiments).
 
 ## Roadmap
 
