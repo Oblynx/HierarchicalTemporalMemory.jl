@@ -25,4 +25,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/Oblynx/HierarchicalTemporalMemory.jl",
+    push_preview= true,
 )
