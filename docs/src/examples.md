@@ -20,7 +20,7 @@ Follow along [at the source](https://github.com/Oblynx/HierarchicalTemporalMemor
 
 ## HTM model
 
-![htm model](assets/htm_predict_pipeline.jpg)
+![htm model](assets/htm_predict_pipeline.png)
 
 ### Encoding
 

@@ -45,4 +45,4 @@ HTM theory is not yet complete, lacking a definitive way to stabilize sequence r
 
 ## Acknowledgements
 
-- Maria Litsa: logo
+- Maria Litsa: logo and poster art
