@@ -127,22 +127,19 @@ function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
 end
 function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach((scol,input_i)->
-                    adapt_sparsesynapses!(scol,input_i, z,params.p⁺,params.p⁻),
-                 s.Dₚ, a)
+  sparse_foreach((scol,i)->
+      (@views adapt_synapses!(scol, z[i], .!z[i], params.p⁺,params.p⁻)),
+        s.Dₚ, a)
   # Update cache of connected synapses
   @inbounds s.connected[:,a].= s.Dₚ[:,a] .> params.θ_permanence
 end
 
-"""
-`adapt_sparsesynapses!(synapses_activeCol,input_i,z,p⁺,p⁻)` updates the permanence of the given vector of synapses,
-which is typically a `@view` into the nonzero elements that represent an active column of the sparse array of synapses.
-The input
-"""
-function adapt_sparsesynapses!(synapses_activeCol,input_i, z,p⁺,p⁻)
-  @inbounds z_i= z[input_i]
-  adapt_synapses!(synapses_activeCol, z_i, .!z_i, p⁺,p⁻)
-end
+#"""
+#`adapt_sparsesynapses!(synapses_activeCol,input_i,z,p⁺,p⁻)` updates the permanence of the given vector of synapses,
+#which is typically a `@view` into the nonzero elements that represent an active column of the sparse array of synapses.
+#
+#TODO
+#"""
 
 adapt_synapses!(synapses, activeConn, inactiveConn, p⁺,p⁻)= (
   @inbounds synapses.= activeConn .* (synapses .⊕ p⁺) .+
@@ -248,12 +245,12 @@ cell2col(cells,k)= @. (cells-1) ÷ k + 1
 function step!(s::DistalSynapses, pWN,WS, α, pα,pMₛ,povp_Mₛ)
   @unpack p⁺,p⁻,LTD_p⁻,θ_permanence = s.params
   # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach((scol,cell_i)->
-                    adapt_sparsesynapses!(scol,cell_i, pα, p⁺,p⁻),
+  sparse_foreach((scol,i)->
+      (@views adapt_synapses!(scol, pα[i], .!pα[i], p⁺,p⁻)),
                  s.Dd, WS)
   # Decay "matching" synapses that didn't result in an active neuron
-  sparse_foreach((scol,cell_i)->
-                    adapt_sparsesynapses!(scol,cell_i, .!pα,zero(𝕊𝕢),LTD_p⁻),
+  sparse_foreach((scol,i)->
+      (@views adapt_synapses!(scol, .!pα[i], pα[i],zero(𝕊𝕢),LTD_p⁻)),
                  s.Dd, decayS(s,pMₛ,α))
   growsynapses!(s, pWN,WS, povp_Mₛ)
   # Update cache of connected synapses

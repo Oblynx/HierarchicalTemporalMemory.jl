@@ -24,7 +24,8 @@ end
 _collect(itr,n,elT)= Base.collect(itr)
 
 """
-`TruesOf` iterates over the trues of a `BitArray`
+`TruesOf` is a non-allocating version of `findall`:
+iterates over the trues of a `BitArray`
 
 # Examples
 ```jldoctest; setup= :(import Random; Random.seed!(5))
