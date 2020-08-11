@@ -5,3 +5,5 @@
 *.jl.mem
 /docs/build/
 .vscode
+/.benchmarkci
+/benchmark/*.json
