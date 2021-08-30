@@ -30,15 +30,15 @@ iterates over the trues of a `BitArray`
 # Examples
 ```jldoctest; setup= :(import Random; Random.seed!(5))
 julia> b= Random.bitrand(5)
-5-element BitArray{1}:
+5-element BitVector:
+ 1
+ 1
  1
  0
  0
- 1
- 1
 
 julia> foreach(i-> print(string(i)*" "), HTM.Truesof(b))
-1 4 5
+1 2 3
 ```
 """
 struct Truesof
