@@ -1,5 +1,4 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-HierarchicalTemporalMemory = "db654dba-670c-566a-9226-64313b881ded"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 Lazy = "50d2b5c4-7a5e-59d5-8109-a42b560f39c0"

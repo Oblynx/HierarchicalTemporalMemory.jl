@@ -1,6 +1,6 @@
 # Parameters for the test script (set in runtests.jl)
 #ENV["JULIA_DEBUG"] = "HierarchicalTemporalMemory"
-#plot_enabled= false
+plot_enabled= false
 
 using HierarchicalTemporalMemory, BenchmarkTools, CSV, Printf, Lazy, Test
 using Plots; gr()
@@ -91,7 +91,7 @@ errormetric= mase(data.power_hourly_kw[400:end], history_likelyPred[400:end],pre
 @info @sprintf("Prediction MASE: %.3f\n", errormetric)
 
 avg_TMout_sparsity= mapslices(x->count(x)./length(x),history_TMout,dims=1)'|>median
-plot_mase(data.power_hourly_kw, history_likelyPred, prediction_timesteps)
+plot_enabled && plot_mase(data.power_hourly_kw, history_likelyPred, prediction_timesteps)
 @info @sprintf("avg_TMout_sparsity: %.3f%%\n", 100*avg_TMout_sparsity)
 @info @sprintf("avg_burst: %.3f%%\n", 100*avg_burst)
 
