@@ -13,7 +13,8 @@ jobs:
           version: 1.6
       - uses: julia-actions/julia-buildpkg@latest
       - name: Install dependencies
-        run: julia -e 'using Pkg; pkg"add PkgBenchmark BenchmarkCI@0.1"'
+        # Pin Parsers < 2.0 to fix https://github.com/JuliaData/CSV.jl/issues/868
+        run: julia -e 'using Pkg; pkg"add PkgBenchmark BenchmarkCI@0.1 Parsers@1.1.2"'
       - name: Run benchmarks
         run: julia -e '
           using PkgBenchmark, BenchmarkCI;
