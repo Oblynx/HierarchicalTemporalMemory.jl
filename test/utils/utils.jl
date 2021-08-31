@@ -10,7 +10,7 @@ end
 _process_tm(t,tN, tm,a)= step!(tm,a)
 identity(a...)= a
 read_gympower(dataset_filename= "test/test_data/gym_power_benchmark.csv")= begin
-  data= CSV.read(dataset_filename)#; truestrings=["1"], falsestrings=["0"], types=(String,Float16,Int,String))
+  data= CSV.read(dataset_filename, DataFrame)#; truestrings=["1"], falsestrings=["0"], types=(String,Float16,Int,String))
   ((power_hourly_kw= data.power_hourly_kw,
     hour= data.hour,
     is_weekend= data.is_weekend

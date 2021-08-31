@@ -38,7 +38,7 @@ function setupHTMexperiment(;
             LTD_p⁻_01= 0.012
           ),
       dataFilepath= "test/test_data/gym_power_benchmark-extended.csv")
-  data= CSV.read(dataFilepath)
+  data= CSV.read(dataFilepath, DataFrame)
   encParams= initenc_powerDay(data.power_hourly_kw, data.hour, data.is_weekend,
                   encoder_size=inputDims[1], w=(34,35,35))
   decoder= SDRClassifier(tmParams.Nₙ,encParams.power_p.buckets,

@@ -1,4 +1,4 @@
-using HierarchicalTemporalMemory, BenchmarkTools, CSV, Setfield
+using HierarchicalTemporalMemory, BenchmarkTools, CSV, Setfield, DataFrames
 import Random.seed!
 seed!(0)
 

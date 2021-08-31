@@ -1,7 +1,7 @@
 ENV["JULIA_DEBUG"] = "HierarchicalTemporalMemory"
 plot_enabled= false
 
-using HierarchicalTemporalMemory, BenchmarkTools, CSV, Printf, Lazy, Test
+using HierarchicalTemporalMemory, BenchmarkTools, CSV, Printf, Lazy, DataFrames, Test
 using Plots; gr()
 import Random.seed!
 seed!(0)
