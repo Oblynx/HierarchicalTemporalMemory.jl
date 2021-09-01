@@ -87,6 +87,12 @@ function TemporalMemory(params::TMParams)
       )))
 end
 
+"""
+`step!(tm::TemporalMemory, c::CellActivity)` evolves the Temporal Memory to the next timestep
+and returns the state of the region's neurons: active, predictive, bursting (minicolumns)
+
+See also: [`tm_activate`](@ref), [`tm_predict`](@ref)
+"""
 # Given a column activation pattern `c` (SP output), step the TM
 function step!(tm::TemporalMemory, c::CellActivity)
   s= tm.distalSynapses; p= tm.previous
@@ -101,7 +107,24 @@ function step!(tm::TemporalMemory, c::CellActivity)
   step!(s, p.WN,WS, α, p.α,p.Mₛ,p.ovp_Mₛ)
   update_TMState!(p, Nseg=Nₛ(s),
                   α=α, Π=Π, WN=WN, Πₛ=Πₛ, Mₛ=Mₛ, ovp_Mₛ=ovp_Mₛ)
-  return α,Π, B
+  return (
+    active= α,
+    predictive= Π,
+    bursting= B
+  )
+end
+
+"""
+Active and predictive cells given the minicolumn activations.
+
+See also: [`tm_activate`](@ref), [`tm_predict`](@ref)
+"""
+(tm::TemporalMemory)(c)= begin
+  α= tm_activate(tm,c)[1]
+  (
+    active= α,
+    predictive= tm_predict(tm,α)[1]
+  )
 end
 
 """
