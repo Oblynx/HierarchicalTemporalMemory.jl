@@ -63,40 +63,39 @@ struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
       - Init permanence: rescale Z from `[0..1-θ] -> [0..1]: Z/(1-θ)``
   """
   function ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
-        prob_synapse,θ_permanence)
+        prob_synapse,θ_permanence; topology= false)
     # Map column coordinates to their center in the input space. Column coords FROM 1 !!!
     xᶜ(yᵢ)= floor.(Int, (yᵢ.-1) .* (szᵢₙ./szₛₚ)) .+1
     xᵢ(xᶜ)= Hypercube(xᶜ,γ,szᵢₙ)
     θ_effective()= floor(𝕊𝕢, prob_synapse*typemax(𝕊𝕢))
     out_lattice()= (c.I for c in CartesianIndices(szₛₚ))
 
-    # Draw permanences from uniform distribution. Connections aren't very sparse (40%),
-    #   so prefer a dense matrix
-    permanences(::Type{SparseSynapses},xᵢ)= sprand(𝕊𝕢,length(xᵢ),1, prob_synapse)
-    permanences(::Type{DenseSynapses}, xᵢ)= begin
+    # Draw permanences from uniform distribution.
+    permanences(::Type{SparseSynapses},x, cols)= sprand(𝕊𝕢, x, cols, prob_synapse)
+    permanences(::Type{DenseSynapses}, x, cols)= begin
       # Decide randomly if yᵢ ⟷ xᵢ will connect
-      p= rand(𝕊𝕢range,length(xᵢ))
+      p= rand(𝕊𝕢range, x, cols)
       p0= p .> θ_effective(); pScale= p .< θ_effective()
       fill!(view(p,p0), 𝕊𝕢(0))
       # Draw permanences from uniform distribution in 𝕊𝕢
       rand!(view(p,pScale), 𝕊𝕢range)
       return p
     end
-    fillin_permanences()= begin
+    # Initialize permanences with topology. Each point in the output space is matched to a hypercube in the input space
+    init_permanences_topo()= begin
+      c2lᵢₙ= LinearIndices(szᵢₙ)
+      c2lₛₚ= LinearIndices(szₛₚ)
       Dₚ= zeros(𝕊𝕢, prod(szᵢₙ),prod(szₛₚ))
       foreach(out_lattice()) do yᵢ
         # Linear indices from hypercube
-        x= @>> yᵢ xᶜ xᵢ collect map(x->c2lᵢₙ[x...])
-        Dₚ[x, c2lₛₚ[yᵢ...]]= permanences(SynapseT, @> yᵢ xᶜ xᵢ)
+        x= @>> yᵢ xᶜ xᵢ map(x->c2lᵢₙ[x...])
+        Dₚ[x, c2lₛₚ[yᵢ...]]= permanences(SynapseT, (@> yᵢ xᶜ xᵢ length), 1)
       end
       return Dₚ
     end
-    c2lᵢₙ= LinearIndices(szᵢₙ)
-    c2lₛₚ= LinearIndices(szₛₚ)
 
-    SynapseT= synapseSparsity<0.05 ? SparseSynapses : DenseSynapses
-    ConnectedT= synapseSparsity<0.05 ? SparseMatrixCSC{Bool} : Matrix{Bool}
-    Dₚ= fillin_permanences()
+    SynapseT, ConnectedT= synapseSparsity < 5e-2 ? (SparseSynapses, SparseMatrixCSC{Bool}) : (DenseSynapses, Matrix{Bool})
+    Dₚ= topology ? init_permanences_topo() : permanences(SynapseT, prod(szᵢₙ), prod(szₛₚ))
     new{SynapseT,ConnectedT}(Dₚ, Dₚ .> θ_permanence)
   end
 end

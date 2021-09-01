@@ -85,7 +85,7 @@ function SpatialPooler(params::SPParams)
   init_φ= [((2γ+0.5)*prob_synapse*mean(szₛₚ./szᵢₙ) - 1)/2]
   SpatialPooler(params,
       ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
-          prob_synapse,θ_permanence),
+          prob_synapse,θ_permanence, topology= enable_local_inhibit),
       init_φ,
       ones(prod(szₛₚ)), zeros(szₛₚ), zeros(szₛₚ)
   )

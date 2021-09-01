@@ -36,8 +36,8 @@ Base.iterate(hc::Hypercube)= begin
   i= iterate(hc.indices)
   !isnothing(i) ? (i[1].I,i[2]) : nothing
 end
-Base.iterate(hc::Hypercube,state)= begin
-  i= iterate(hc.indices,state)
+Base.iterate(hc::Hypercube{N}, state) where N= begin
+  i= Base.iterate(hc.indices, state)::Union{Nothing, Tuple{CartesianIndex{N}, CartesianIndex{N}}}
   !isnothing(i) ? (i[1].I,i[2]) : nothing
 end
 #Base.eltype(hc::Hypercube)= eltype(hc.indices)
