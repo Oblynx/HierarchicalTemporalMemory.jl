@@ -126,9 +126,9 @@ function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
 end
 function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach((scol,i)->
-      (@views adapt_synapses!(scol, z[i], .!z[i], params.p⁺,params.p⁻)),
-        s.Dₚ, a)
+  sparse_foreach(s.Dₚ, a) do scol,i
+      @views adapt_synapses!(scol, z[i], .!z[i], params.p⁺,params.p⁻)
+  end
   # Update cache of connected synapses
   @inbounds s.connected[:,a].= s.Dₚ[:,a] .> params.θ_permanence
 end

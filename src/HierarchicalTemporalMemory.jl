@@ -8,6 +8,7 @@ import Random: rand!, randsubseq!, randperm
 import LinearAlgebra: Adjoint
 import Statistics: mean, median, quantile
 import StatsBase: countmap
+import Chain: @chain
 
 # Type aliases
 
