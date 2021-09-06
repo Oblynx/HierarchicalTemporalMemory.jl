@@ -46,7 +46,7 @@ They allow a dense or sparse matrix representation of the synapses
 
 See also: [`DistalSynapses`](@ref), [`SpatialPooler`](@ref), [`TemporalMemory`](@ref)
 """
-struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
+mutable struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
   Dₚ::SynapseT
   connected::ConnectedT
 
@@ -129,16 +129,8 @@ function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   sparse_foreach(s.Dₚ, a) do scol,i
       @views adapt_synapses!(scol, z[i], .!z[i], params.p⁺,params.p⁻)
   end
-  # Update cache of connected synapses
-  @inbounds s.connected[:,a].= s.Dₚ[:,a] .> params.θ_permanence
+  s.connected= s.Dₚ .> params.θ_permanence
 end
-
-#"""
-#`adapt_sparsesynapses!(synapses_activeCol,input_i,z,p⁺,p⁻)` updates the permanence of the given vector of synapses,
-#which is typically a `@view` into the nonzero elements that represent an active column of the sparse array of synapses.
-#
-#TODO
-#"""
 
 adapt_synapses!(synapses, activeConn, inactiveConn, p⁺,p⁻)= (
   @inbounds synapses.= activeConn .* (synapses .⊕ p⁺) .+
@@ -252,8 +244,6 @@ function step!(s::DistalSynapses, pWN,WS, α, pα,pMₛ,povp_Mₛ)
       (@views adapt_synapses!(scol, .!pα[i], pα[i],zero(𝕊𝕢),LTD_p⁻)),
                  s.Dd, decayS(s,pMₛ,α))
   growsynapses!(s, pWN,WS, povp_Mₛ)
-  # Update cache of connected synapses
-  #@inbounds s.connected[:,WS].= s.synapses[:,WS] .> params.θ_permanence
   s.connected= s.Dd .> θ_permanence
 end
 
