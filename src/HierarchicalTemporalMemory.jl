@@ -41,6 +41,7 @@ include("algorithm_parameters.jl")
 include("dynamical_systems.jl")
 include("SpatialPooler.jl")
 include("TemporalMemory.jl")
+include("Region.jl")
 
 export Hypercube, Hypersphere
 export SpatialPooler, SPParams
