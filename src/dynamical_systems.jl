@@ -143,11 +143,20 @@ adapt_synapses!(synapses, activeConn, inactiveConn, p⁺,p⁻)= (
 # (assume the same learning rule governs all types of distal synapses)
 
 """
+    DistalSynapses(Nₙ, Nc, k; Nseg_init=0, params)
+
 `DistalSynapses` are lateral connections within a neuron layer that attach to the dendrites of neurons,
 not directly to the soma (neuron's center), and can therefore **depolarize** neurons but *can't activate them.*
 Compare with [`ProximalSynapses`](@ref).
-
 Used in the context of the [`TemporalMemory`](@ref).
+
+Parameters:
+
+- Nₙ: number of presynaptic neurons
+- Nc: number of minicolumns in layer
+- k: neurons per minicolumn
+- Nseg_init: how many dendritic segments to begin with. More grow as needed while learning.
+- params: [`DistalSynapseParams`](@ref) with learning rates etc
 
 # Description
 
@@ -205,16 +214,27 @@ A few extra matrices are filled in over the evolution of the distal synapses to 
 - `segCol` caches the segment - column map (aka `SC`)
 """
 mutable struct DistalSynapses
-  # synapse permanence
-  Dd::SparseSynapses                     # Nn × Nseg
-  # neurons - segments
-  neurSeg::SparseMatrixCSC{Bool,Int}     # Nn × Nseg
+  "synapse permanence {Nₙ × Nseg}"
+  Dd::SparseSynapses
+  "neurons - segments {Nₙ × Nseg}"
+  neurSeg::SparseMatrixCSC{Bool,Int}
   # caches
-  connected::SparseMatrixCSC{Bool,Int}   # Nn × Nsed
-  segCol::SparseMatrixCSC{Bool,Int}      # Nseg × Ncol
+  "connection cache, continuously updated with Dd > θ_permanence {Nₙ × Nseg}"
+  connected::SparseMatrixCSC{Bool,Int}
+  "segments - minicolumns {Nseg × Ncol}"
+  segCol::SparseMatrixCSC{Bool,Int}
+  "neurons per minicolumn"
   k::Int
   params::DistalSynapseParams
 end
+
+DistalSynapses(Nₙ, Nc, k; Nseg_init=0, params)= DistalSynapses(
+  SparseSynapses(spzeros(𝕊𝕢,Nₙ,Nseg_init)),
+  spzeros(Bool,Nₙ,Nseg_init),
+  spzeros(Bool,Nₙ,Nseg_init),
+  spzeros(Bool,Nseg_init,Nc),
+  k, params)
+
 # friendly names for the matrices
 NS(s::DistalSynapses)= s.neurSeg
 SC(s::DistalSynapses)= s.segCol
