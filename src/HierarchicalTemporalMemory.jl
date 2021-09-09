@@ -46,6 +46,7 @@ include("Region.jl")
 export Hypercube, Hypersphere
 export SpatialPooler, SPParams
 export TemporalMemory, TMParams
+export Region
 export step!
 
 # Maybe move encoders to another package, as they're many and independent from the core algorithms?

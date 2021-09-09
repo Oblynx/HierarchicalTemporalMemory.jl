@@ -26,3 +26,38 @@ distal_input= sprand(Bool,Nn(r), 0.003)|> BitVector
 active, predictive= r(feedforward_input, distal_input)
 ```
 """
+struct Region
+  sp::SpatialPooler
+  tm::TemporalMemory
+end
+Region(spp::SPParams,tmp::TMParams; recurrent=true, distal_input_size=0)= begin
+  @assert prod(spp.szₛₚ) == tmp.Nc "Number of minicolumns in Spatial Pooler and Temporal Memory in the same region must match"
+  Region(SpatialPooler(spp), TemporalMemory(tmp, recurrent=recurrent, distal_input_size=distal_input_size))
+end
+Nc(r::Region)= r.tm.params.Nc
+Nn(r::Region)= r.tm.params.Nₙ
+
+# distal:= implicit recurrent connections only
+(r::Region)(proximal, distal=falses(0))= @chain gateCombine(proximal) begin
+  r.sp
+  r.tm(_, gateCombine(distal))
+end
+
+step!(r::Region, proximal, distal=falses(0))= @chain gateCombine(proximal) begin
+  step!(r.sp, _)
+  step!(r.tm, _, gateCombine(distal))
+end
+
+
+
+"""
+    connectContext!(output::Region, input::Region)
+
+Connect contextually 2 regions `output -> input` by wiring the activation of
+`output` to the context gate of `input`. Only `input` changes.
+"""
+#connectContext!(input::Region, output::Region)
+
+bitVcat(a::BitArray, b)= Base.typed_vcat(typeof(a), a,b)
+gateCombine(x::Vector{CellActivity})= reduce((a,b)-> bitVcat(a,b), x)
+gateCombine(x)= x
