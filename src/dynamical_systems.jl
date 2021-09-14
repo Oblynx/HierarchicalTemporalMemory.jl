@@ -53,6 +53,7 @@ mutable struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
   connected::ConnectedT
   "copy of the initial state of Dₚ to allow reset"
   init_Dₚ::SynapseT
+  θ_permanence::𝕊𝕢
 
   """
   `ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ, prob_synapse,θ_permanence)` makes an `{szᵢₙ × szₛₚ}` synapse permanence matrix
@@ -100,12 +101,12 @@ mutable struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
 
     SynapseT, ConnectedT= synapseSparsity < 5e-2 ? (SparseSynapses, SparseMatrixCSC{Bool}) : (DenseSynapses, Matrix{Bool})
     Dₚ= topology ? init_permanences_topo() : permanences(SynapseT, prod(szᵢₙ), prod(szₛₚ))
-    new{SynapseT,ConnectedT}(Dₚ, Dₚ .> θ_permanence, Dₚ)
+    new{SynapseT,ConnectedT}(Dₚ, Dₚ .> θ_permanence, Dₚ, θ_permanence)
   end
 end
 reset!(s::ProximalSynapses)= begin
-  s.Dₚ= s.init_D
-  s.connected= s.init_Dₚ .> s.params.θ_permanence
+  s.Dₚ= s.init_Dₚ
+  s.connected= s.init_Dₚ .> s.θ_permanence
 end
 Wₚ(s::ProximalSynapses)= s.connected
 
