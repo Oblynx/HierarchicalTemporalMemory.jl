@@ -35,7 +35,7 @@ Region(spp::SPParams,tmp::TMParams; recurrent=true, distal_input_size=0)= begin
   Region(SpatialPooler(spp), TemporalMemory(tmp, recurrent=recurrent, distal_input_size=distal_input_size))
 end
 Nc(r::Region)= r.tm.params.Nc
-Nn(r::Region)= r.tm.params.Nₙ
+Nₙ(r::Region)= Nₙ(r.tm)
 
 # distal:= implicit recurrent connections only
 (r::Region)(proximal, distal=falses(0))= @chain gateCombine(proximal) begin
@@ -48,7 +48,10 @@ step!(r::Region, proximal, distal=falses(0))= @chain gateCombine(proximal) begin
   step!(r.tm, _, gateCombine(distal))
 end
 
-
+reset!(r::Region)= begin
+  reset!(r.sp)
+  reset!(r.tm)
+end
 
 """
     connectContext!(output::Region, input::Region)

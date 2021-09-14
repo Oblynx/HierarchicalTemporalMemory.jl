@@ -47,7 +47,7 @@ export Hypercube, Hypersphere
 export SpatialPooler, SPParams
 export TemporalMemory, TMParams
 export Region
-export step!
+export step!, reset!, Nc, Nₙ
 
 # Maybe move encoders to another package, as they're many and independent from the core algorithms?
 # TODO create extensible encoder interface

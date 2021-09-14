@@ -73,22 +73,31 @@ end
 function SpatialPooler(params::SPParams)
   params= normalize_SPparams(params)
   @unpack szᵢₙ,szₛₚ,prob_synapse,θ_permanence,γ,
-          enable_local_inhibit  = params
+          enable_local_inhibit = params
 
   synapseSparsity= prob_synapse * (enable_local_inhibit ?
                       (α(γ)^length(szᵢₙ))/prod(szᵢₙ) : 1)
-  init_φ= [((2γ+0.5)*prob_synapse*mean(szₛₚ./szᵢₙ) - 1)/2]
   SpatialPooler(params,
       ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
           prob_synapse,θ_permanence, topology= enable_local_inhibit),
-      init_φ,
+      init_φ(γ,prob_synapse,szᵢₙ,szₛₚ),
       ones(prod(szₛₚ)), zeros(szₛₚ), zeros(szₛₚ)
   )
 end
+init_φ(γ,prob_synapse,szᵢₙ,szₛₚ)= [((2γ+0.5)*prob_synapse*mean(szₛₚ./szᵢₙ) - 1)/2]
 b(sp::SpatialPooler)= sp.params.enable_boosting ? ones(length(sp.b)) : sp.b
 åₙ(sp::SpatialPooler)= sp.åₙ
 Wₚ(sp::SpatialPooler)= Wₚ(sp.synapses)
 φ(sp::SpatialPooler)= sp.φ[1]
+
+reset!(sp::SpatialPooler)= begin
+  @unpack szᵢₙ,szₛₚ,prob_synapse,γ = sp.params
+  reset!(sp.synapses)
+  sp.φ.= init_φ(γ,prob_synapse,szᵢₙ,szₛₚ),
+  sp.b.= 1.0
+  sp.åₜ.= 0.0
+  sp.åₙ.= 0.0
+end
 
 # SP activation
 

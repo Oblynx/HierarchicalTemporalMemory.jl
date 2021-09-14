@@ -19,11 +19,21 @@ mutable struct TMState
           BitArray{1}, BitArray{1}, Vector{Int}}
   }
 end
+TMState(Nₙ, Nseg)= TMState((
+  α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
+  Πₛ=falses(Nseg), Mₛ=falses(Nseg),
+  ovp_Mₛ=zeros(Nseg)
+))
 Base.getproperty(s::TMState, name::Symbol)= name === :state ?
     getfield(s,:state) : getproperty(getfield(s,:state),name)
 update_TMState!(s::TMState; Nseg,α,Π,WN,Πₛ,Mₛ,ovp_Mₛ)=
     s.state= (α=α, Π= Π, WN= WN, Πₛ= padfalse(Πₛ,Nseg),
               Mₛ= padfalse(Mₛ,Nseg), ovp_Mₛ= padfalse(ovp_Mₛ,Nseg))
+reset!(s::TMState)= begin
+  Nₙ= length(s.α); Nseg= length(s.Πₛ);
+  update_TMState!(s,α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
+    Πₛ=falses(Nseg), Mₛ=falses(Nseg), ovp_Mₛ=zeros(Nseg))
+end
 
 """
     TemporalMemory(params::TMParams; recurrent= true, distal_input_size=0)
@@ -93,12 +103,14 @@ function TemporalMemory(params::TMParams; recurrent= true, distal_input_size=0)
   TemporalMemory(params,
       DistalSynapses(N_presynaptic, Nc, k;
         Nseg_init= Nseg_init, params= DistalSynapseParams(params)),
-      TMState((
-        α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
-        Πₛ=falses(Nseg_init), Mₛ=falses(Nseg_init),
-        ovp_Mₛ=zeros(Nseg_init)
-      )),
+      TMState(Nₙ,Nseg_init),
       recurrent)
+end
+
+Nₙ(tm::TemporalMemory)= tm.params.Nₙ
+reset!(tm::TemporalMemory)= begin
+  reset!(tm.distalSynapses)
+  reset!(tm.previous)
 end
 
 """

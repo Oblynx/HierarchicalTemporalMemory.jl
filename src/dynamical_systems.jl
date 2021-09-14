@@ -47,8 +47,12 @@ They allow a dense or sparse matrix representation of the synapses
 See also: [`DistalSynapses`](@ref), [`SpatialPooler`](@ref), [`TemporalMemory`](@ref)
 """
 mutable struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
+  "synapse permanence matrix"
   Dₚ::SynapseT
+  "cache of connected synapses"
   connected::ConnectedT
+  "copy of the initial state of Dₚ to allow reset"
+  init_Dₚ::SynapseT
 
   """
   `ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ, prob_synapse,θ_permanence)` makes an `{szᵢₙ × szₛₚ}` synapse permanence matrix
@@ -96,8 +100,12 @@ mutable struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
 
     SynapseT, ConnectedT= synapseSparsity < 5e-2 ? (SparseSynapses, SparseMatrixCSC{Bool}) : (DenseSynapses, Matrix{Bool})
     Dₚ= topology ? init_permanences_topo() : permanences(SynapseT, prod(szᵢₙ), prod(szₛₚ))
-    new{SynapseT,ConnectedT}(Dₚ, Dₚ .> θ_permanence)
+    new{SynapseT,ConnectedT}(Dₚ, Dₚ .> θ_permanence, Dₚ)
   end
+end
+reset!(s::ProximalSynapses)= begin
+  s.Dₚ= s.init_D
+  s.connected= s.init_Dₚ .> s.params.θ_permanence
 end
 Wₚ(s::ProximalSynapses)= s.connected
 
@@ -226,6 +234,8 @@ mutable struct DistalSynapses
   "neurons per minicolumn"
   k::Int
   params::DistalSynapseParams
+  "copy of the initial number of synapses to allow reset"
+  init_Nseg::Int
 end
 
 DistalSynapses(Nₙ, Nc, k; Nseg_init=0, params)= DistalSynapses(
@@ -233,7 +243,18 @@ DistalSynapses(Nₙ, Nc, k; Nseg_init=0, params)= DistalSynapses(
   spzeros(Bool,Nₙ,Nseg_init),
   spzeros(Bool,Nₙ,Nseg_init),
   spzeros(Bool,Nseg_init,Nc),
-  k, params)
+  k, params, Nseg_init)
+
+reset!(s::DistalSynapses)= begin
+  Nₙ= size(s.Dd,1); Nc= size(s.segCol,2)
+  newSyn= DistalSynapses(Nₙ,Nc, s.k, Nseg_init= s.init_Nseg, params= s.params)
+  foreach(s|>propertynames) do p
+    @chain p begin
+      getproperty(newSyn,_)
+      setproperty!(s,p,_)
+    end
+  end
+end
 
 # friendly names for the matrices
 NS(s::DistalSynapses)= s.neurSeg
