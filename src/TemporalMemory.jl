@@ -20,20 +20,22 @@ mutable struct TMState
   }
   init_Nseg::Int
 end
-TMState(Nₙ, Nseg)= TMState((
+TMState(Nₙ::Int, Nseg)= TMState((
   α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
   Πₛ=falses(Nseg), Mₛ=falses(Nseg),
   ovp_Mₛ=zeros(Nseg)
 ), Nseg)
 Base.getproperty(s::TMState, name::Symbol)= name === :state ?
-    getfield(s,:state) : getproperty(getfield(s,:state),name)
+    getfield(s,:state) :
+    name === :init_Nseg ? getfield(s, :init_Nseg) :
+      getproperty(getfield(s,:state),name)
 update_TMState!(s::TMState; Nseg,α,Π,WN,Πₛ,Mₛ,ovp_Mₛ)=
     s.state= (α=α, Π= Π, WN= WN, Πₛ= padfalse(Πₛ,Nseg),
               Mₛ= padfalse(Mₛ,Nseg), ovp_Mₛ= padfalse(ovp_Mₛ,Nseg))
 reset!(s::TMState)= begin
   Nₙ= length(s.α);
-  update_TMState!(s, Nseg=s.Nseg, α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
-    Πₛ=falses(s.Nseg), Mₛ=falses(s.Nseg), ovp_Mₛ=zeros(s.Nseg))
+  update_TMState!(s, Nseg=s.init_Nseg, α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
+    Πₛ=falses(s.init_Nseg), Mₛ=falses(s.init_Nseg), ovp_Mₛ=zeros(s.init_Nseg))
 end
 
 """
