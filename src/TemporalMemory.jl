@@ -31,7 +31,7 @@ update_TMState!(s::TMState; Nseg,α,Π,WN,Πₛ,Mₛ,ovp_Mₛ)=
               Mₛ= padfalse(Mₛ,Nseg), ovp_Mₛ= padfalse(ovp_Mₛ,Nseg))
 reset!(s::TMState)= begin
   Nₙ= length(s.α); Nseg= length(s.Πₛ);
-  update_TMState!(s,α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
+  update_TMState!(s, Nseg=Nseg, α=falses(Nₙ), Π=falses(Nₙ), WN=falses(Nₙ),
     Πₛ=falses(Nseg), Mₛ=falses(Nseg), ovp_Mₛ=zeros(Nseg))
 end
 

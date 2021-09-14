@@ -93,7 +93,7 @@ Wₚ(sp::SpatialPooler)= Wₚ(sp.synapses)
 reset!(sp::SpatialPooler)= begin
   @unpack szᵢₙ,szₛₚ,prob_synapse,γ = sp.params
   reset!(sp.synapses)
-  sp.φ.= init_φ(γ,prob_synapse,szᵢₙ,szₛₚ),
+  sp.φ.= init_φ(γ,prob_synapse,szᵢₙ,szₛₚ)
   sp.b.= 1.0
   sp.åₜ.= 0.0
   sp.åₙ.= 0.0
