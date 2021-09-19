@@ -2,15 +2,11 @@
 # v0.16.0
 
 using Markdown
-using InteractiveUtils
 
 # ╔═╡ 0d3bf5f6-1171-11ec-0fee-c73bb459dc3d
 begin
-	import Pkg; Pkg.activate(Base.current_project())
-	using Revise
 	using HierarchicalTemporalMemory
-	using Random, Chain, Setfield, Statistics, Plots, PlutoUI
-	#using PlotlyJS;	plotlyjs()
+	using Random, Chain, Setfield, Statistics, Test
 end
 
 # ╔═╡ 1bb0fcfc-2d7a-4634-9c93-263050c56a55
@@ -175,11 +171,12 @@ expmedian(y)= median(y, dims=2);
 
 # ╔═╡ 456021aa-3dbf-4102-932f-43109905f9eb
 begin
-	plot(Δyₜₑ(), minorgrid=true, ylim= [0,.3], opacity=0.3, labels=nothing,
-		title="Convergence of yₜ", ylabel="Relative distance per step Δyₜ",
-		xlabel="t")
-	plot!(Δȳₜ, linewidth=2, label="median Δȳ")
-	hline!(zeros(T) .+ .05, linecolor=:black, linestyle=:dash, label="5% limit")
+	# plot(Δyₜₑ(), minorgrid=true, ylim= [0,.3], opacity=0.3, labels=nothing,
+	# 	title="Convergence of yₜ", ylabel="Relative distance per step Δyₜ",
+	# 	xlabel="t")
+	# plot!(Δȳₜ, linewidth=2, label="median Δȳ")
+	# hline!(zeros(T) .+ .05, linecolor=:black, linestyle=:dash, label="5% limit")
+	@test all(Δȳₜ[25:end] .< .05)
 end
 
 # ╔═╡ 56e0da0b-8858-459a-9aae-0eba4797cc06
@@ -216,9 +213,9 @@ activity_n(y)= count.(y)|> expmedian
 
 # ╔═╡ 85dfe3ed-cf70-4fde-a94a-f70c3fe4abf6
 begin
-	using Plots.PlotMeasures
-	plot(activity_n(y)/activity_n(y)[1], linecolor=:blue, foreground_color_subplot=:blue, ylabel="Relative activity in B", rightmargin=14mm, legend=:none)
-	plot!(twinx(), Δȳₜ, linecolor=:red, foreground_color_subplot=:red, ylabel="median Δȳ", legend=:none)
+	# using Plots.PlotMeasures
+	# plot(activity_n(y)/activity_n(y)[1], linecolor=:blue, foreground_color_subplot=:blue, ylabel="Relative activity in B", rightmargin=14mm, legend=:none)
+	# plot!(twinx(), Δȳₜ, linecolor=:red, foreground_color_subplot=:red, ylabel="median Δȳ", legend=:none)
 end
 
 # ╔═╡ 2b6d959f-63bb-4d42-a34d-70d93f6a1636
@@ -232,7 +229,7 @@ in fact, the average number of neurons firing in each active minicolumn should b
 activity_per_active_minicolumn(y)= @chain y reshape(_,k,:) count(_, dims=1) filter(x->x>0, _) mean
 
 # ╔═╡ 5ec611f4-d3ea-4c5d-9221-4dcf2da3e18c
-abs.(expmedian(activity_per_active_minicolumn.(y)) .- activity_n(y)/activity_n(y)[1]*k)|>sum
+@test sum(abs.(expmedian(activity_per_active_minicolumn.(y)) .- activity_n(y)/activity_n(y)[1]*k)) < 1e-10
 
 # ╔═╡ 3df40867-674b-405a-a05c-0733a4caaa67
 md"The 2 are almost identical, therefore this explanation of the first few steps in the graph seems to hold up."
