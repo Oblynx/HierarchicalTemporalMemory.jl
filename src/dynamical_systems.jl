@@ -46,9 +46,14 @@ They allow a dense or sparse matrix representation of the synapses
 
 See also: [`DistalSynapses`](@ref), [`SpatialPooler`](@ref), [`TemporalMemory`](@ref)
 """
-struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
+mutable struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
+  "synapse permanence matrix"
   Dₚ::SynapseT
+  "cache of connected synapses"
   connected::ConnectedT
+  "copy of the initial state of Dₚ to allow reset"
+  init_Dₚ::SynapseT
+  θ_permanence::𝕊𝕢
 
   """
   `ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ, prob_synapse,θ_permanence)` makes an `{szᵢₙ × szₛₚ}` synapse permanence matrix
@@ -63,42 +68,45 @@ struct ProximalSynapses{SynapseT<:AnySynapses,ConnectedT<:AnyConnection}
       - Init permanence: rescale Z from `[0..1-θ] -> [0..1]: Z/(1-θ)``
   """
   function ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
-        prob_synapse,θ_permanence)
+        prob_synapse,θ_permanence; topology= false)
     # Map column coordinates to their center in the input space. Column coords FROM 1 !!!
     xᶜ(yᵢ)= floor.(Int, (yᵢ.-1) .* (szᵢₙ./szₛₚ)) .+1
     xᵢ(xᶜ)= Hypercube(xᶜ,γ,szᵢₙ)
     θ_effective()= floor(𝕊𝕢, prob_synapse*typemax(𝕊𝕢))
     out_lattice()= (c.I for c in CartesianIndices(szₛₚ))
 
-    # Draw permanences from uniform distribution. Connections aren't very sparse (40%),
-    #   so prefer a dense matrix
-    permanences(::Type{SparseSynapses},xᵢ)= sprand(𝕊𝕢,length(xᵢ),1, prob_synapse)
-    permanences(::Type{DenseSynapses}, xᵢ)= begin
+    # Draw permanences from uniform distribution.
+    permanences(::Type{SparseSynapses},x, cols)= sprand(𝕊𝕢, x, cols, prob_synapse)
+    permanences(::Type{DenseSynapses}, x, cols)= begin
       # Decide randomly if yᵢ ⟷ xᵢ will connect
-      p= rand(𝕊𝕢range,length(xᵢ))
+      p= rand(𝕊𝕢range, x, cols)
       p0= p .> θ_effective(); pScale= p .< θ_effective()
       fill!(view(p,p0), 𝕊𝕢(0))
       # Draw permanences from uniform distribution in 𝕊𝕢
       rand!(view(p,pScale), 𝕊𝕢range)
       return p
     end
-    fillin_permanences()= begin
+    # Initialize permanences with topology. Each point in the output space is matched to a hypercube in the input space
+    init_permanences_topo()= begin
+      c2lᵢₙ= LinearIndices(szᵢₙ)
+      c2lₛₚ= LinearIndices(szₛₚ)
       Dₚ= zeros(𝕊𝕢, prod(szᵢₙ),prod(szₛₚ))
       foreach(out_lattice()) do yᵢ
         # Linear indices from hypercube
-        x= @>> yᵢ xᶜ xᵢ collect map(x->c2lᵢₙ[x...])
-        Dₚ[x, c2lₛₚ[yᵢ...]]= permanences(SynapseT, @> yᵢ xᶜ xᵢ)
+        x= @>> yᵢ xᶜ xᵢ map(x->c2lᵢₙ[x...])
+        Dₚ[x, c2lₛₚ[yᵢ...]]= permanences(SynapseT, (@> yᵢ xᶜ xᵢ length), 1)
       end
       return Dₚ
     end
-    c2lᵢₙ= LinearIndices(szᵢₙ)
-    c2lₛₚ= LinearIndices(szₛₚ)
 
-    SynapseT= synapseSparsity<0.05 ? SparseSynapses : DenseSynapses
-    ConnectedT= synapseSparsity<0.05 ? SparseMatrixCSC{Bool} : Matrix{Bool}
-    Dₚ= fillin_permanences()
-    new{SynapseT,ConnectedT}(Dₚ, Dₚ .> θ_permanence)
+    SynapseT, ConnectedT= synapseSparsity < 5e-2 ? (SparseSynapses, SparseMatrixCSC{Bool}) : (DenseSynapses, Matrix{Bool})
+    Dₚ= topology ? init_permanences_topo() : permanences(SynapseT, prod(szᵢₙ), prod(szₛₚ))
+    new{SynapseT,ConnectedT}(Dₚ, Dₚ .> θ_permanence, Dₚ, θ_permanence)
   end
+end
+reset!(s::ProximalSynapses)= begin
+  s.Dₚ= s.init_Dₚ
+  s.connected= s.init_Dₚ .> s.θ_permanence
 end
 Wₚ(s::ProximalSynapses)= s.connected
 
@@ -127,19 +135,11 @@ function adapt!(::DenseSynapses,s::ProximalSynapses, z,a, params)
 end
 function adapt!(::SparseSynapses,s::ProximalSynapses, z,a, params)
   # Learn synapse permanences according to Hebbian learning rule
-  sparse_foreach((scol,i)->
-      (@views adapt_synapses!(scol, z[i], .!z[i], params.p⁺,params.p⁻)),
-        s.Dₚ, a)
-  # Update cache of connected synapses
-  @inbounds s.connected[:,a].= s.Dₚ[:,a] .> params.θ_permanence
+  sparse_foreach(s.Dₚ, a) do scol,i
+      @views adapt_synapses!(scol, z[i], .!z[i], params.p⁺,params.p⁻)
+  end
+  s.connected= s.Dₚ .> params.θ_permanence
 end
-
-#"""
-#`adapt_sparsesynapses!(synapses_activeCol,input_i,z,p⁺,p⁻)` updates the permanence of the given vector of synapses,
-#which is typically a `@view` into the nonzero elements that represent an active column of the sparse array of synapses.
-#
-#TODO
-#"""
 
 adapt_synapses!(synapses, activeConn, inactiveConn, p⁺,p⁻)= (
   @inbounds synapses.= activeConn .* (synapses .⊕ p⁺) .+
@@ -152,11 +152,20 @@ adapt_synapses!(synapses, activeConn, inactiveConn, p⁺,p⁻)= (
 # (assume the same learning rule governs all types of distal synapses)
 
 """
+    DistalSynapses(Nₙ, Nc, k; Nseg_init=0, params)
+
 `DistalSynapses` are lateral connections within a neuron layer that attach to the dendrites of neurons,
 not directly to the soma (neuron's center), and can therefore **depolarize** neurons but *can't activate them.*
 Compare with [`ProximalSynapses`](@ref).
-
 Used in the context of the [`TemporalMemory`](@ref).
+
+Parameters:
+
+- Nₙ: number of presynaptic neurons
+- Nc: number of minicolumns in layer
+- k: neurons per minicolumn
+- Nseg_init: how many dendritic segments to begin with. More grow as needed while learning.
+- params: [`DistalSynapseParams`](@ref) with learning rates etc
 
 # Description
 
@@ -214,16 +223,40 @@ A few extra matrices are filled in over the evolution of the distal synapses to 
 - `segCol` caches the segment - column map (aka `SC`)
 """
 mutable struct DistalSynapses
-  # synapse permanence
-  Dd::SparseSynapses                     # Nn × Nseg
-  # neurons - segments
-  neurSeg::SparseMatrixCSC{Bool,Int}     # Nn × Nseg
+  "synapse permanence {Nₙ × Nseg}"
+  Dd::SparseSynapses
+  "neurons - segments {Nₙ × Nseg}"
+  neurSeg::SparseMatrixCSC{Bool,Int}
   # caches
-  connected::SparseMatrixCSC{Bool,Int}   # Nn × Nsed
-  segCol::SparseMatrixCSC{Bool,Int}      # Nseg × Ncol
+  "connection cache, continuously updated with Dd > θ_permanence {Nₙ × Nseg}"
+  connected::SparseMatrixCSC{Bool,Int}
+  "segments - minicolumns {Nseg × Ncol}"
+  segCol::SparseMatrixCSC{Bool,Int}
+  "neurons per minicolumn"
   k::Int
   params::DistalSynapseParams
+  "copy of the initial number of synapses to allow reset"
+  init_Nseg::Int
 end
+
+DistalSynapses(Nₙ, Nc, k; Nseg_init=0, params)= DistalSynapses(
+  SparseSynapses(spzeros(𝕊𝕢,Nₙ,Nseg_init)),
+  spzeros(Bool,Nₙ,Nseg_init),
+  spzeros(Bool,Nₙ,Nseg_init),
+  spzeros(Bool,Nseg_init,Nc),
+  k, params, Nseg_init)
+
+reset!(s::DistalSynapses)= begin
+  Nₙ= size(s.Dd,1); Nc= size(s.segCol,2)
+  newSyn= DistalSynapses(Nₙ,Nc, s.k, Nseg_init= s.init_Nseg, params= s.params)
+  foreach(s|>propertynames) do p
+    @chain p begin
+      getproperty(newSyn,_)
+      setproperty!(s,p,_)
+    end
+  end
+end
+
 # friendly names for the matrices
 NS(s::DistalSynapses)= s.neurSeg
 SC(s::DistalSynapses)= s.segCol
@@ -253,8 +286,6 @@ function step!(s::DistalSynapses, pWN,WS, α, pα,pMₛ,povp_Mₛ)
       (@views adapt_synapses!(scol, .!pα[i], pα[i],zero(𝕊𝕢),LTD_p⁻)),
                  s.Dd, decayS(s,pMₛ,α))
   growsynapses!(s, pWN,WS, povp_Mₛ)
-  # Update cache of connected synapses
-  #@inbounds s.connected[:,WS].= s.synapses[:,WS] .> params.θ_permanence
   s.connected= s.Dd .> θ_permanence
 end
 

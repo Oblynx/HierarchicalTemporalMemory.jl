@@ -1,8 +1,3 @@
-#include("utils/topology.jl")
-#include("dynamical_systems.jl")
-#include("algorithm_parameters.jl")
-
-
 """
 `SpatialPooler` is a learning algorithm that decorrelates the features of an input space,
 producing a Sparse Distributed Representation (SDR) of the input space.
@@ -78,22 +73,31 @@ end
 function SpatialPooler(params::SPParams)
   params= normalize_SPparams(params)
   @unpack szᵢₙ,szₛₚ,prob_synapse,θ_permanence,γ,
-          enable_local_inhibit  = params
+          enable_local_inhibit = params
 
   synapseSparsity= prob_synapse * (enable_local_inhibit ?
                       (α(γ)^length(szᵢₙ))/prod(szᵢₙ) : 1)
-  init_φ= [((2γ+0.5)*prob_synapse*mean(szₛₚ./szᵢₙ) - 1)/2]
   SpatialPooler(params,
       ProximalSynapses(szᵢₙ,szₛₚ,synapseSparsity,γ,
-          prob_synapse,θ_permanence),
-      init_φ,
+          prob_synapse,θ_permanence, topology= enable_local_inhibit),
+      init_φ(γ,prob_synapse,szᵢₙ,szₛₚ),
       ones(prod(szₛₚ)), zeros(szₛₚ), zeros(szₛₚ)
   )
 end
+init_φ(γ,prob_synapse,szᵢₙ,szₛₚ)= [((2γ+0.5)*prob_synapse*mean(szₛₚ./szᵢₙ) - 1)/2]
 b(sp::SpatialPooler)= sp.params.enable_boosting ? ones(length(sp.b)) : sp.b
 åₙ(sp::SpatialPooler)= sp.åₙ
 Wₚ(sp::SpatialPooler)= Wₚ(sp.synapses)
 φ(sp::SpatialPooler)= sp.φ[1]
+
+reset!(sp::SpatialPooler)= begin
+  @unpack szᵢₙ,szₛₚ,prob_synapse,γ = sp.params
+  reset!(sp.synapses)
+  sp.φ.= init_φ(γ,prob_synapse,szᵢₙ,szₛₚ)
+  sp.b.= 1.0
+  sp.åₜ.= 0.0
+  sp.åₙ.= 0.0
+end
 
 # SP activation
 
@@ -138,30 +142,51 @@ For details see: [`sp_activate`](@ref)
 """
 function sp_activate(sp::SpatialPooler, z)
   @unpack szₛₚ,s,θ_permanence,θ_stimulus_activate,enable_local_inhibit = sp.params
+
   # overlap
-  o(z)= @> (b(sp) .* (Wₚ(sp)'*(z|>vec))) reshape(szₛₚ)
+  overlap(z)= @chain vec(z) begin
+    Wₚ(sp)' * _
+    θ_activation.(_)
+    b(sp) .* _
+    reshape(szₛₚ)
+  end
+  θ_activation(x)= x .> θ_stimulus_activate ? x : 0
 
   # inhibition
   area()= enable_local_inhibit ? α(φ(sp))^length(szₛₚ) : prod(szₛₚ)
   k()=    ceil(Int, s*area())
-  sErr()= 1 - k() + s*area()
-  tieEst(o,Z)= count(o .== Z) * area()/prod(szₛₚ)
   # inhibition threshold per area
   # OPTIMIZE: local inhibition is the SP's bottleneck. "mapwindow" is suboptimal;
   #   https://github.com/JuliaImages/Images.jl/issues/751
   θ_inhibit!(X)= @> X vec partialsort!(k(),rev=true)
-  # Z: k-th larger overlap in neighborhood
+  # Z: k-th largest overlap in neighborhood
   Z(y)= _Z(Val(enable_local_inhibit),y)
   # we increase the threshold a bit to account stochastically for the error in approximating k and for tiebreaking
-  _Z(loc_inhibit::Val{true}, y)= @> mapwindow(θ_inhibit!, y, neighborhood(φ(sp),length(szₛₚ)), border=Fill(0)) max.(θ_stimulus_activate)
-  _Z(loc_inhibit::Val{false},y)= @> θ_inhibit!(copy(y)) max.(θ_stimulus_activate)
-  tiebreaker(o,Z)= rand(Float32,szₛₚ) .- (1 - sErr()/tieEst(o,Z))
+  _Z(loc_inhibit::Val{true}, y)= @> mapwindow(θ_inhibit!, y, neighborhood(φ(sp),length(szₛₚ)), border=Fill(0))
+  _Z(loc_inhibit::Val{false},y)= @> θ_inhibit!(copy(y))
+  Z_perm(y)= partialsortperm(y, 1:k(), rev=true)
 
-  activate(o)= begin
+  # Tiebreaker
+  sErr()= 1 - k() + s*area()
+  tieEst(o,Z)= count(o .== Z) * area()/prod(szₛₚ)
+  tiebreaker(o,Z)= rand(Float32,szₛₚ) .- (1 - sErr()/tieEst(o,Z))
+  activate_tiebreaker(o)= begin
     Z= Z(o)
     (o .+ tiebreaker(o,Z) .>= Z)
   end
-  z|> o|> activate
+
+  if enable_local_inhibit
+    @chain z begin
+      overlap
+      activate_tiebreaker
+    end
+  else
+    @chain z begin
+      overlap
+      Z_perm
+      bitarray(_, szₛₚ)
+    end
+  end
 end
 
 # SP adaptation

@@ -32,8 +32,8 @@ All gated features are enabled by default.
 """
 @with_kw struct SPParams
   # dimensions
-  szᵢₙ::Union{NTuple{N,Int} where N,Int}     = (32,32); @assert all(szᵢₙ.>0)
-  szₛₚ::Union{NTuple{N,Int} where N,Int}     = (50,50); @assert all(szₛₚ.>0)
+  szᵢₙ::Union{NTuple{N,Int} where N,Int}     = 1000; @assert all(szᵢₙ.>0)
+  szₛₚ::Union{NTuple{N,Int} where N,Int}     = 5000; @assert all(szₛₚ.>0)
   γ::Int                    = 6;       @assert 0<γ<=minimum(szᵢₙ)
 
   # tuning
@@ -85,7 +85,7 @@ similar to [source]()
 """
 @with_kw struct TMParams
   # dimensions
-  Nc::Int                  = 2500;    @assert Nc>0
+  Nc::Int                  = 5000;    @assert Nc>0
   k::Int                   = 10;      @assert k>0
   Nₙ::Int                  = k*Nc;    @assert Nₙ>0
 
@@ -104,6 +104,8 @@ similar to [source]()
 
   # feature gates
   enable_learning::Bool    = true
+
+  @assert Nc*k == Nₙ
 end
 
 # Created from TMParams

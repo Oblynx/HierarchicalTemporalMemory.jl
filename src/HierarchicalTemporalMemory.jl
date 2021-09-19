@@ -8,6 +8,7 @@ import Random: rand!, randsubseq!, randperm
 import LinearAlgebra: Adjoint
 import Statistics: mean, median, quantile
 import StatsBase: countmap
+import Chain: @chain
 
 # Type aliases
 
@@ -40,11 +41,13 @@ include("algorithm_parameters.jl")
 include("dynamical_systems.jl")
 include("SpatialPooler.jl")
 include("TemporalMemory.jl")
+include("Region.jl")
 
 export Hypercube, Hypersphere
 export SpatialPooler, SPParams
 export TemporalMemory, TMParams
-export step!
+export Region
+export step!, reset!, Nc, Nₙ
 
 # Maybe move encoders to another package, as they're many and independent from the core algorithms?
 # TODO create extensible encoder interface

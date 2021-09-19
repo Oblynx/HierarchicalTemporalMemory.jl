@@ -62,8 +62,9 @@ See also: [`sparse_map`](@ref)
 sparse_foreach(f, s::SparseMatrixCSC,columnIdx)=
   foreach(Truesof(columnIdx)) do c
     ci= nzrange(s,c)
-    f((@view nonzeros(s)[ci]),rowvals(s)[ci])
+    @views f(nonzeros(s)[ci], rowvals(s)[ci])
   end
+
 """
 `sparse_map(f, s::SparseMatrixCSC,columnIdx)` maps each column of the sparse matrix `s` specified by
 `columnIdx` to `f(columnElt,columnRowIdx)`.
