@@ -145,15 +145,13 @@ y= Matrix(undef,T,experiments);
 
 # ╔═╡ d08cce9d-dd9c-4530-82ae-bf1db8be3281
 # Send SDRs from A -> B
-with_terminal() do
-	for e= 1:experiments
-	  @info "experiment $e"
-	  x= @chain bitrand(Nin) A(_).active;
-	  reset!(B)
-	  for t= 1:T
-		t%10==0 && @info "t=$t"
-		y[t,e]= step!(B,x).active
-	  end
+for e= 1:experiments
+	@info "experiment $e"
+	x= @chain bitrand(Nin) A(_).active;
+	reset!(B)
+	for t= 1:T
+	t%10==0 && @info "t=$t"
+	y[t,e]= step!(B,x).active
 	end
 end
 
