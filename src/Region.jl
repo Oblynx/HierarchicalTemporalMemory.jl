@@ -37,6 +37,11 @@ end
 Nc(r::Region)= r.tm.params.Nc
 Nₙ(r::Region)= Nₙ(r.tm)
 
+"`distalSynapses(r::Region)` is the adjacency matrix of the Region's connected distal synapses in {pre- × post-}synaptic neuron format."
+distalSynapses(r::Region)= Wd(r.tm)
+"`proximalSynapses(r::Region)` is the adjacency matrix of the Region's connected proximal synapses in {pre- × post-}synaptic neuron format."
+proximalSynapses(r::Region)= Wₚ(r.sp)
+
 # distal:= implicit recurrent connections only
 (r::Region)(proximal, distal=falses(0))= @chain gateCombine(proximal) begin
   r.sp

@@ -110,6 +110,15 @@ function TemporalMemory(params::TMParams; recurrent= true, distal_input_size=0)
       recurrent)
 end
 
+"""
+    Wd(tm::TemporalMemory)
+
+The connected distal synapses of the temporal memory in {presynaptic neuron × postsynaptic neuron} format.
+The TM natively has a synapse matrix of {presynaptic neuron × postsynaptic dendritic segments}: `Wd(::DistalSynapses)`.
+It is joined with the neuron-segment adjacency matrix: `NS(::DistalSynapses)`.
+This connection matrix is obtained by matrix multiplication `Wd * NS`.
+"""
+Wd(tm::TemporalMemory)= Wd(tm.distalSynapses) * NS(tm.distalSynapses)'
 Nₙ(tm::TemporalMemory)= tm.params.Nₙ
 reset!(tm::TemporalMemory)= begin
   reset!(tm.distalSynapses)
