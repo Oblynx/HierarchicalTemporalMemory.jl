@@ -313,7 +313,7 @@ begin
 	#	xlabel="t", label=:none
 	#)
 	#vline!([30,30],linecolor=:black, opacity=0.3, linestyle=:dash, label=:none)
-  @test trainingcurve[end] > trainingcurve[end÷2] && trainingcurve[end] > 5000
+  @test trainingcurve[end] > trainingcurve[5] && trainingcurve[end] > 5000
 end
 
 # ╔═╡ b886095d-d449-4334-99cf-44b800bb4fc4
