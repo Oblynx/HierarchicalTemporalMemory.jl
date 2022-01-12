@@ -37,17 +37,38 @@ end
 Nc(r::Region)= r.tm.params.Nc
 Nₙ(r::Region)= Nₙ(r.tm)
 
-# distal:= implicit recurrent connections only
+"`distalSynapses(r::Region)` is the adjacency matrix of the Region's connected distal synapses in {pre- × post-}synaptic neuron format."
+distalSynapses(r::Region)= Wd(r.tm)
+"`proximalSynapses(r::Region)` is the adjacency matrix of the Region's connected proximal synapses in {pre- × post-}synaptic neuron format."
+proximalSynapses(r::Region)= Wₚ(r.sp)
+
+"""
+    (r::Region)(proximal, distal=falses(0))
+
+Stimulates the region with the given inputs, without adapting it (pure function).
+If distal input isn't given explicitly, recurrent connections are still used (if present).
+
+See also [`Region`](@ref)
+"""
 (r::Region)(proximal, distal=falses(0))= @chain gateCombine(proximal) begin
   r.sp
   r.tm(_, gateCombine(distal))
 end
 
+"""
+    step!(r::Region, proximal, distal=falses(0))
+
+Stimulates the region with the given inputs, adapting it following the learning rules.
+If distal input isn't given explicitly, recurrent connections are still used (if present).
+
+See also [`Region`](@ref)
+"""
 step!(r::Region, proximal, distal=falses(0))= @chain gateCombine(proximal) begin
   step!(r.sp, _)
   step!(r.tm, _, gateCombine(distal))
 end
 
+"`reset!(r::Region)` unlearns the region's synapses (and other internal state), restoring it to the state at construction"
 reset!(r::Region)= begin
   reset!(r.sp)
   reset!(r.tm)

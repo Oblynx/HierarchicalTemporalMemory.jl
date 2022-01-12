@@ -29,7 +29,7 @@ iterates over the trues of a `BitArray`
 
 # Examples
 ```jldoctest; setup= :(import Random; Random.seed!(5))
-julia> b= Random.bitrand(5)
+julia> b= [true,true,true,false,false]|> BitVector
 5-element BitVector:
  1
  1
