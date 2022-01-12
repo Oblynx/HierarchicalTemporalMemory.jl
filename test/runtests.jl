@@ -32,4 +32,4 @@ if GROUP == AllTests || GROUP == TemporalMemoryTest
     include("temporal_memory_test.jl")
   end
 end
-@testset "Region" begin include("test_projection.jl") end
+@testset "Region" begin include("test_region_projection.jl") end

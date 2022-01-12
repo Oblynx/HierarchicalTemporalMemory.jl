@@ -2,7 +2,6 @@
 # v0.17.5
 
 using Markdown
-using InteractiveUtils
 
 # ╔═╡ 0d3bf5f6-1171-11ec-0fee-c73bb459dc3d
 begin
