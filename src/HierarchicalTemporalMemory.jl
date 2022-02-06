@@ -9,6 +9,7 @@ import LinearAlgebra: Adjoint
 import Statistics: mean, median, quantile
 import StatsBase: countmap
 import Chain: @chain
+import Graphs: SimpleDiGraph, add_edge!, edges, vertices
 
 # Type aliases
 
@@ -42,12 +43,13 @@ include("dynamical_systems.jl")
 include("SpatialPooler.jl")
 include("TemporalMemory.jl")
 include("Region.jl")
+include("Network.jl")
 
 export Hypercube, Hypersphere
 export SpatialPooler, SPParams
 export TemporalMemory, TMParams
-export Region
-export step!, reset!, Nc, Nₙ, proximalSynapses, distalSynapses
+export Region, Network
+export step!, reset!, Nc, Nₙ, proximalSynapses, distalSynapses, networkPlot
 
 # Maybe move encoders to another package, as they're many and independent from the core algorithms?
 # TODO create extensible encoder interface

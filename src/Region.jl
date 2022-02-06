@@ -36,6 +36,9 @@ Region(spp::SPParams,tmp::TMParams; recurrent=true, distal_input_size=0)= begin
 end
 Nc(r::Region)= r.tm.params.Nc
 Nₙ(r::Region)= Nₙ(r.tm)
+Base.size(r::Region)= (r.sp.params.szₛₚ..., r.tm.params.k)
+Base.length(r::Region)= Nₙ(r)
+
 
 "`distalSynapses(r::Region)` is the adjacency matrix of the Region's connected distal synapses in {pre- × post-}synaptic neuron format."
 distalSynapses(r::Region)= Wd(r.tm)
@@ -54,6 +57,10 @@ See also [`Region`](@ref)
   r.sp
   r.tm(_, gateCombine(distal))
 end
+
+# Support easier chaining of regions
+RegionOutput= NamedTuple{(:active, :predictive, :bursting)}
+(r::Region)(proximal::RegionOutput, distal=falses(0))= r(proximal.active, distal)
 
 """
     step!(r::Region, proximal, distal=falses(0))
@@ -82,6 +89,5 @@ Connect contextually 2 regions `output -> input` by wiring the activation of
 """
 #connectContext!(input::Region, output::Region)
 
-bitVcat(a::BitArray, b)= Base.typed_vcat(typeof(a), a,b)
-gateCombine(x::Vector{CellActivity})= reduce((a,b)-> bitVcat(a,b), x)
+gateCombine(x::Vector{T} where T <: CellActivity)= length(x) > 0 ? reduce(.|, x) : falses(0)
 gateCombine(x)= x
