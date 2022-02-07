@@ -13,6 +13,8 @@ struct Network{T<:Integer}
   """
   circuit_proximal::SimpleDiGraph{T}
   circuit_distal::SimpleDiGraph{T}
+  in_vertex::Int
+  out_vertex::Int
 end
 
 """
@@ -70,7 +72,14 @@ Network(regions; connect_forward, connect_context=zeros(length(regions).*(1,1)))
   add_edges!(circuit_distal, connect_context)
   # Initialize the state of each region to `falses`
   Network(regions, map(r-> falses(length(r)), regions),
-      circuit_proximal, circuit_distal)
+      circuit_proximal, circuit_distal,
+      length(regions)+1, length(regions)+2)
+end
+
+reset!(n::Network)= begin
+  foreach(reset!, n.regions)
+  n.region_α₋ .= map(r-> falses(length(r)), n.regions)
+  n
 end
 
 """
@@ -99,17 +108,33 @@ add_edges!(g,adjacency)= map(findall(adjacency .> 0)) do edge
 		add_edge!(g, edge.I...)
 	end
 
-# Evaluate a "vertex map", applying the Network's state to each region
-(n::Network)(proximal, distal=falses(0))= begin
-  # For each region, calculate its activation based on the previous activation of every neighbor
-  n.region_α₋.= map(n.regions|> enumerate) do (i,r)
-    proximal_input= getindexOverflow(n.region_α₋, proximal, Graphs.inneighbors(n.circuit_proximal,i))
-    distal_input= getindexOverflow(n.region_α₋, distal, Graphs.inneighbors(n.circuit_distal,i))
-    r(proximal_input,distal_input).active
-  end
-  # Emit output activation
-  getindexOverflow(n.region_α₋, proximal, Graphs.inneighbors(n.circuit_proximal,length(n.regions)+2))|> gateCombine
-end
+"Evaluate a \"vertex map\", applying the Network's state to each region"
+(n::Network)(proximal, distal=falses(0))= activateNetwork(n,activate,proximal,distal)
+step!(n::Network, proximal, distal=falses(0))= activateNetwork(n,step!,proximal,distal)
 
 getindexOverflow(a,overflow,i)= getindexOverflow.(Ref(a),Ref(overflow),i)
 getindexOverflow(a,overflow,i::Integer)= i .<= length(a) ? a[i] : overflow
+
+"`activateNetwork(n,f,proximal,distal)` calculates each region's input and applies function `f`. It's the common denominator of network activation functions."
+activateNetwork(n,f,proximal,distal)= begin
+  # For each region, calculate its activation based on the previous activation of every neighbor
+  n.region_α₋.= map(n.regions|> enumerate) do (i,r)
+    proximal_input= getindexOverflow(n.region_α₋, proximal, inneighbors(n.circuit_proximal,i))
+    distal_input= getindexOverflow(n.region_α₋, distal, inneighbors(n.circuit_distal,i))
+    f(r,proximal_input,distal_input).active
+  end
+  # Emit output activation
+  getindexOverflow(n.region_α₋, proximal, inneighbors(n.circuit_proximal,n.out_vertex))|> gateCombine
+end
+
+"""
+    propagation_delay(n::Network)
+
+The shortest time after repeated stimulation with `a` that `n(a)` will be related to `a` (the minimum number of repeated stimulations).
+The network will always produce some activity, but until that point it will be unrelated to the input `a`.
+The signal traverses 1 Region inside the Network with each stimulation, therefore the number of regions between the input and the output
+of the network is the minimum time necessary before the output has a relationship with the input.
+
+The network might not be stable at this point and continued stimulation with `a` might allow longer paths to the output to contribute.
+"""
+propagation_delay(n::Network)= length(a_star(n.circuit_proximal, n.in_vertex, n.out_vertex)) - 1

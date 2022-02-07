@@ -57,6 +57,7 @@ See also [`Region`](@ref)
   r.sp
   r.tm(_, gateCombine(distal))
 end
+activate(r::Region,proximal,distal)= r(proximal,distal)
 
 # Support easier chaining of regions
 RegionOutput= NamedTuple{(:active, :predictive, :bursting)}
