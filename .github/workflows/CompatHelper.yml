@@ -24,7 +24,9 @@ jobs:
       - name: "Run CompatHelper"
         run: |
           import CompatHelper
-          CompatHelper.main(include_jll=true, bump_version=true)
+          CompatHelper.main(include_jll=true, bump_version=false,
+              subdirs=[""], #, "test", "docs", "benchmark"],
+          )
         shell: julia --color=yes {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
