@@ -151,7 +151,7 @@ function step!(tm::TemporalMemory, c, distal_input=falses(0))
   return (
     active= α,
     predictive= Π,
-    bursting= B
+    bursting= B,
   )
 end
 
@@ -161,12 +161,13 @@ Active and predictive cells given the minicolumn activations and any distal inpu
 See also: [`tm_activate`](@ref), [`tm_predict`](@ref)
 """
 (tm::TemporalMemory)(c, distal_input=falses(0))= begin
-  α= tm_activate(tm,c,tm.previous.Π)[1]
+  α, B, WN= tm_activate(tm,c,tm.previous.Π)
   # If recurrent, concatenate distal input activity with this layer's activity
   distal_input= tm.recurrent ? [α;distal_input] : distal_input
   (
     active= α,
-    predictive= tm_predict(tm,distal_input)[1]
+    predictive= tm_predict(tm,distal_input)[1],
+    bursting= B,
   )
 end
 

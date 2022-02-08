@@ -1,7 +1,7 @@
 ENV["JULIA_DEBUG"] = "HierarchicalTemporalMemory"
 using Documenter, Test, HierarchicalTemporalMemory
 
-@enum GROUPS AllTests SpatialPoolerTest TemporalMemoryTest Basic RegionTest
+@enum GROUPS AllTests SpatialPoolerTest TemporalMemoryTest Basic RegionTest NetworkTest
 
 const GROUP= try
   get(ENV, "GROUP", "AllTests")|> Symbol|> eval
@@ -35,5 +35,10 @@ end
 if GROUP == AllTests || GROUP == RegionTest
   @testset "Region" begin
     include("test_region_projection.jl")
+  end
+end
+if GROUP == AllTests || GROUP == NetworkTest
+  @testset "Network" begin
+    include("test_network.jl")
   end
 end
