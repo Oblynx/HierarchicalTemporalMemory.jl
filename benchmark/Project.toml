@@ -7,4 +7,9 @@ PkgBenchmark = "32113eaa-f34f-5b0d-bd6c-c81e245fc73d"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 
 [compat]
-BenchmarkTools = "1"
+BenchmarkTools = "^1.0"
+HierarchicalTemporalMemory = "^0.3"
+PkgBenchmark = "^0.2"
+DataFrames = "^1.0"
+CSV = "^0.10"
+Setfield = "^0.8"
