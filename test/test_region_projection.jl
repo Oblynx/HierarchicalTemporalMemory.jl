@@ -195,12 +195,13 @@ expmedian(y)= median(y, dims=2);
 
 # ╔═╡ 456021aa-3dbf-4102-932f-43109905f9eb
 begin
-  # TEST: Comment out plotting
-	#plot(Δyₜₑ(), minorgrid=true, ylim= [0,.3], opacity=0.3, labels=nothing,
-	#	title="Convergence of yₜ", ylabel="Relative distance per step Δyₜ",
-	#	xlabel="t")
-	#plot!(Δȳₜ, linewidth=2, label="median Δȳ")
-	#hline!(zeros(T) .+ .05, linecolor=:black, linestyle=:dash, label="5% limit")
+	plot_enabled && begin
+		plot(Δyₜₑ(), minorgrid=true, ylim= [0,.3], opacity=0.3, labels=nothing,
+			title="Convergence of yₜ", ylabel="Relative distance per step Δyₜ",
+			xlabel="t")
+		plot!(Δȳₜ, linewidth=2, label="median Δȳ")
+		hline!(zeros(T) .+ .05, linecolor=:black, linestyle=:dash, label="5% limit")
+	end
 	@test all(Δȳₜ[25:end] .< .05)
 end
 
@@ -306,14 +307,14 @@ end
 
 # ╔═╡ 5bd5049c-de0d-4838-9c82-9cef604e650e
 begin
-  # TEST: comment out plots
+    # TEST: comment out plots
 	#plot(trainingcurve,
 	#	minorgrid=true, title="Assembly interconnection training curve",
 	#	ylabel="assembly interconnection",
 	#	xlabel="t", label=:none
 	#)
 	#vline!([30,30],linecolor=:black, opacity=0.3, linestyle=:dash, label=:none)
-  @test trainingcurve[end] > trainingcurve[5] && trainingcurve[end] > 5000
+    @test trainingcurve[end] > mean(trainingcurve[5:10]) && trainingcurve[end] > 5000
 end
 
 # ╔═╡ b886095d-d449-4334-99cf-44b800bb4fc4
