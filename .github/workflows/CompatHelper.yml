@@ -25,7 +25,7 @@ jobs:
         run: |
           import CompatHelper
           CompatHelper.main(include_jll=true, bump_version=false,
-              subdirs=["", "test", "docs", "benchmark"],
+              subdirs=[""], #, "test", "docs", "benchmark"],
           )
         shell: julia --color=yes {0}
         env:
