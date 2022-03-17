@@ -19,7 +19,8 @@ jobs:
           #- 'nightly'
         os:
           - ubuntu-latest
-          - windows-latest
+          # Windows tests run out of memory.
+          #- windows-latest
         arch:
           - x64
     steps:
