@@ -98,7 +98,7 @@ macro percolumn(reduce,a,k)
 end
 
 """
-`bitarray(dims, idx)`
+`bitarray(idx, dims)`
 
 Create a bitarray with `true` only at `idx`.
 """
