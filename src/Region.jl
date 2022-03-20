@@ -64,16 +64,17 @@ RegionOutput= NamedTuple{(:active, :predictive, :bursting)}
 (r::Region)(proximal::RegionOutput, distal=falses(0))= r(proximal.active, distal)
 
 """
-    step!(r::Region, proximal, distal=falses(0))
+    step!(r::Region, proximal, distal=falses(0), learn= true)
 
 Stimulates the region with the given inputs, adapting it following the learning rules.
 If distal input isn't given explicitly, recurrent connections are still used (if present).
+If `learn == false`, the synapses are not adapted.
 
 See also [`Region`](@ref)
 """
-step!(r::Region, proximal, distal=falses(0))= @chain gateCombine(proximal) begin
-  step!(r.sp, _)
-  step!(r.tm, _, gateCombine(distal))
+step!(r::Region, proximal, distal=falses(0), learn= true)= @chain gateCombine(proximal) begin
+  step!(r.sp, _, learn)
+  step!(r.tm, _, gateCombine(distal), learn)
 end
 
 "`reset!(r::Region)` unlearns the region's synapses (and other internal state), restoring it to the state at construction"
