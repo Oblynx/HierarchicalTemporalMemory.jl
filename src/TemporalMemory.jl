@@ -126,14 +126,16 @@ reset!(tm::TemporalMemory)= begin
 end
 
 """
-`step!(tm::TemporalMemory, c, distal_input=[])` evolves the Temporal Memory to the next timestep
-given the minicolumn activations and any distal input.
+    step!(tm::TemporalMemory, c, distal_input=[], learn= true)
+
+Evolves the Temporal Memory to the next timestep, given the minicolumn activations and any distal input.
 Returns the state of the region's neurons: active, predictive, bursting (minicolumns)
+If `learn == false`, the synapses are not adapted.
 
 See also: [`tm_activate`](@ref), [`tm_predict`](@ref)
 """
 # Given a column activation pattern `c` (SP output), step the TM
-function step!(tm::TemporalMemory, c, distal_input=falses(0))
+function step!(tm::TemporalMemory, c, distal_input=falses(0), learn= true)
   s= tm.distalSynapses; p= tm.previous
 
   α, B, WN= tm_activate(tm, c, p.Π)
@@ -145,7 +147,7 @@ function step!(tm::TemporalMemory, c, distal_input=falses(0))
   WS, WS_burst= calculate_WS!(s, p.Πₛ,p.ovp_Mₛ,α,B)
   # Update winner neurons with entries from bursting columns
   WN[NS(s)*WS_burst .> 0].= true
-  step!(s, p.WN,WS, α, p.α,p.Mₛ,p.ovp_Mₛ)
+  learn && step!(s, p.WN,WS, α, p.α,p.Mₛ,p.ovp_Mₛ)
   update_TMState!(p, Nseg=Nₛ(s),
                   α=α, Π=Π, WN=WN, Πₛ=Πₛ, Mₛ=Mₛ, ovp_Mₛ=ovp_Mₛ)
   return (

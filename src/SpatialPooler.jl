@@ -192,15 +192,17 @@ end
 # SP adaptation
 
 """
-`step!(sp::SpatialPooler, z::CellActivity)` evolves the Spatial Pooler to the next timestep
-by evolving each of its constituents (synapses, boosting, inhibition radius)
-and returns the output activation.
+    step!(sp::SpatialPooler, z::CellActivity, learn= true)
+
+Evolves the Spatial Pooler to the next timestep by evolving each of its constituents
+(synapses, boosting, inhibition radius) and returns the output activation.
+If `learn == false`, the synapses are not adapted.
 
 See also: [`sp_activate`](@ref)
 """
-function step!(sp::SpatialPooler, z)
+function step!(sp::SpatialPooler, z, learn= true)
   a= sp_activate(sp, z)
-  if sp.params.enable_learning
+  if learn && sp.params.enable_learning
     step!(sp.synapses, z,a, sp.params)
     step_boost!(sp,a)
     # φ kept static for the moment (no obvious benefit from dynamic φ)
